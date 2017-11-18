@@ -133,20 +133,21 @@ def deploy_base_lamp():
     """ Configure apache vhosts """
     print("configure vhost...")
     for VHOST in VHOSTS:
-        copyfiles(CONF_ROOT, [['/conf/APACHE/2.4/sites-available/010-mywebsite.com.conf', '/etc/apache2/sites-available/010.{0}.conf'
-                  .format(VHOST["SERVER_NAME"]), '0640']])
-        sedvalue("{domain_name}", VHOST["SERVER_NAME"], "/etc/apache2/sites-available/010.{0}.conf"
-                 .format(VHOST["SERVER_NAME"]))
-        sedvalue("{domain_name_alias}", ''.join(VHOST["SERVER_NAME_ALIAS"]), "/etc/apache2/sites-available/010.{0}.conf"
-                 .format(VHOST["SERVER_NAME"]))
+        copyfiles(CONF_ROOT, [
+            ['/conf/APACHE/2.4/sites-available/010-mywebsite.com.conf', '/etc/apache2/sites-available/010.{servername}.conf'
+                  .format(servername=VHOST["SERVER_NAME"]), '0640']
+        ])
+        sedvalue("{domain_name}", VHOST["SERVER_NAME"], "/etc/apache2/sites-available/010.{servername}.conf"
+                 .format(servername=VHOST["SERVER_NAME"]))
+        sedvalue("{domain_name_alias}", ''.join(VHOST["SERVER_NAME_ALIAS"]), "/etc/apache2/sites-available/010.{servername}.conf"
+                 .format(servername=VHOST["SERVER_NAME"]))
 
-        run('mkdir -p /var/www/{0}/prod/'.format(VHOST["SERVER_NAME"]))
-        run('chown 33:33 -R /var/www/{0}/prod/'.format(VHOST["SERVER_NAME"]))
-        run('mkdir -p /var/log/apache2/{0}/'.format(VHOST["SERVER_NAME"]))
-        apache_siteactivation(["010.{0}.conf".format(VHOST["SERVER_NAME"])])
+        run('mkdir -p /var/www/{servername}/prod/'.format(servername=VHOST["SERVER_NAME"]))
+        run('chown 33:33 -R /var/www/{servername}/prod/'.format(servername=VHOST["SERVER_NAME"]))
+        run('mkdir -p /var/log/apache2/{servername}/'.format(servername=VHOST["SERVER_NAME"]))
+        apache_siteactivation(["010.{servername}.conf".format(servername=VHOST["SERVER_NAME"])])
 
     apache_gestion("restart")
-
 
     """ Configure mysql """
     for db in MYSQL_CONF:
