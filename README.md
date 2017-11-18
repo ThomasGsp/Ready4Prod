@@ -1,10 +1,11 @@
 # Ready4Prod
 
+Build quickly your linux lamp server.
 
 * Author : Tlams
-* Date : 2017/2018
-* Status: Dev
-* Object :   Massive LXC CT / KVM deploy system for proxmox hypervisor.
+* Date : Nov 2017
+* Status: Stable
+
 
 ## Quick start
 
