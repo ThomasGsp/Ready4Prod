@@ -122,6 +122,7 @@ def deploy_base_lamp():
         ['/conf/APACHE/2.4/apache2.conf', '/etc/apache2/apache2.conf', '0640'],
         ['/conf/APACHE/2.4/sites-available/000-default.conf', '/etc/apache2/sites-available/000-default.conf', '0640'],
         ['/conf/APACHE/2.4/conf-available/security.conf', '/etc/apache2/conf-available/security.conf', '0640'],
+        ['/conf/APACHE/2.4/conf-available/badbot.conf', '/etc/apache2/conf-available/badbot.conf', '0640'],
         ['/conf/PHP/7.0/php.ini', '/etc/php/7.0/apache2/php.ini', '0640'],
     ]
     copyfiles(CONF_ROOT, files_list)
