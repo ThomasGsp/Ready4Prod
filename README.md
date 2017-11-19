@@ -1,6 +1,6 @@
 # Ready4Prod
 
-Build quickly your linux lamp server.
+Build your linux basic lamp server.
 
 * Author : Tlams
 * Date : Nov 2017
