@@ -75,5 +75,5 @@ vi install_packages.py
 
 ### Play Fabric's file:
 ``` bash
-fab -f install_packages.py deploy_base_lamp -H 172.16.0.207
+fab -f install_packages.py deploy_base_lamp -H <ip_srv>
 ```
