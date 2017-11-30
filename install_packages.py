@@ -7,8 +7,6 @@ from fabric.api import *
 import datetime
 
 def deploy_base_lamp():
-    # Var list
-
     # Directory structure
     PROJECT_ROOT = os.path.dirname(__file__)
     CONF_ROOT = os.path.join(PROJECT_ROOT, 'lamp-debian9')
@@ -140,6 +138,7 @@ def deploy_base_lamp():
         ['/conf/APACHE/2.4/conf-available/security.conf', '/etc/apache2/conf-available/security.conf', '0640'],
         ['/conf/APACHE/2.4/conf-available/badbot.conf', '/etc/apache2/conf-available/badbot.conf', '0640'],
         ['/conf/PHP/7.0/php.ini', '/etc/php/7.0/apache2/php.ini', '0640'],
+        ['/conf/LOGROTATE/apache2.conf', '/etc/logrotate.d/apache2.conf', '0640'],
     ]
     copyfiles(CONF_ROOT, files_list)
     sedvalue("{servername}", HOSTNAME, "/etc/apache2/apache2.conf")
