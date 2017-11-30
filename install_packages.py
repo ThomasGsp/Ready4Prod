@@ -27,7 +27,7 @@ def deploy_base_lamp():
             {
                 "SERVER_NAME": "sitedemo.com",
                 "SERVER_NAME_ALIAS": ["www.sitedemo.com", "www.sitedemo.fr"],
-                "FILES": ""
+                "FILES": "/data/sitedemo.com/index.php"
             },
             {
                 "SERVER_NAME": "sitedemo1.com",
@@ -195,7 +195,7 @@ def deploy_base_lamp():
                 print("Extension not found")
 
 
-        run('chown 33:33 -R /var/www/{servername}/prod/'.format(servername=VHOST["SERVER_NAME"]))
+        run('chown 33:33 -R /var/www/{servername}'.format(servername=VHOST["SERVER_NAME"]))
         run('find /var/www/{servername} -type d -exec chmod 750 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
         run('find /var/www/{servername} -type f -exec chmod 640 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
         apache_siteactivation(["010.{servername}.conf".format(servername=VHOST["SERVER_NAME"])])
