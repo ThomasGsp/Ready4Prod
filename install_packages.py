@@ -36,8 +36,8 @@ def deploy_base_lamp():
             }
         ]
 
-    # DNS - Not implemented
-    NETWORK_DNS = "208.67.222.222"
+    # DNS Servers
+    NETWORK_DNS = ["208.67.222.222", "8.8.8.8"]
 
     # VM HOSTNAME
     HOSTNAME = "prdweb01"
@@ -86,6 +86,7 @@ def deploy_base_lamp():
     upgrade()
     changehostname(HOSTNAME)
     changehostkey()
+    changedns(NETWORK_DNS)
 
     """ Apply system base configuration """
     # File Source, Dest, filemode
@@ -235,6 +236,11 @@ def apache_siteactivation(sitelist):
 def upgrade():
     run("apt-get update")
     run("apt-get upgrade -y")
+
+def changedns(ips):
+    run("echo > /etc/resolv.conf")
+    for ip in ips:
+        run("echo nameserver {dnsip} >> /etc/resolv.conf ".format(dnsip=ip))
 
 
 def changehostkey():
