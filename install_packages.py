@@ -172,7 +172,7 @@ def deploy_base_lamp():
         run('mkdir -p /var/log/apache2/{servername}/'.format(servername=VHOST["SERVER_NAME"]))
         apache_siteactivation(["010.{servername}.conf".format(servername=VHOST["SERVER_NAME"])])
 
-    service_gestion("apache", "restart")
+    service_gestion("apache2", "restart")
 
     """ Configure mysql """
     for db in MYSQL_CONF:
@@ -220,7 +220,7 @@ def copyfiles(conf_root, files_list):
     for file in files_list:
         put(conf_root+file[0], file[1], mode=file[2])
 
-def service_gestion(action, service):
+def service_gestion(service, action):
     run("systemctl {actiontype} {servicename}".format(actiontype=action, servicename=service))
 
 #  APACHE  #
@@ -291,8 +291,8 @@ def changehostname(hostname):
 
 def changehostsfile(hostname, ip):
     run("echo > /etc/hosts")
-    run("echo 127.0.0.1 localhost >> /etc/hostname")
-    run("echo {0} {1} >> /etc/hostname".format(ip, hostname))
+    run("echo 127.0.0.1 localhost >> /etc/hosts")
+    run("echo {0} {1} >> /etc/hosts".format(ip, hostname))
     print("To apply change, you must reboot")
 
 
