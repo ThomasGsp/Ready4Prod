@@ -23,6 +23,7 @@ def deploy_base_lamp():
     **********************
     """
 
+    # Vhost nginx configuration
     VHOSTS = \
         [
             {
@@ -35,12 +36,19 @@ def deploy_base_lamp():
             }
         ]
 
-    # Not implemented
+    # DNS - Not implemented
     NETWORK_DNS = "208.67.222.222"
 
+    # VM HOSTNAME
     HOSTNAME = "prdweb01"
+
+    # SSH PORT
     PORT_SSH_NUMBER = "22"
 
+    # SSHGUARD ip white list
+    SSHGUARD_WL_IP = ["192.168.1.1", "172.16.10.5"]
+
+    # NETWORK configuration
     CONF_INTERFACES = {}
     CONF_INTERFACES["NETWORK_IP"] = "172.16.0.207"
     CONF_INTERFACES["NETWORK_MASK"] = "255.255.255.0"
@@ -48,6 +56,7 @@ def deploy_base_lamp():
     CONF_INTERFACES["mode"] = "static"
     CONF_INTERFACES["DEVISE"] = getinsterfacesname()
 
+    # USERS configuration
     USERS = \
         [
             {
@@ -58,6 +67,7 @@ def deploy_base_lamp():
             }
     ]
 
+    # Mysql users and databases configurations
     MYSQL_CONF = \
         [
             {
@@ -66,7 +76,6 @@ def deploy_base_lamp():
                 "database": "prodbase"
             }
         ]
-
 
     """ 
     ************
@@ -84,6 +93,9 @@ def deploy_base_lamp():
         ['/conf/SYSTEM/sources.list', '/etc/apt/sources.list', '0640'],
         ['/conf/SYSTEM/firewall.sh', '/etc/init.d/firewall', '0740'],
         ['/conf/SYSTEM/sshd_config', '/etc/ssh/sshd_config', '0640'],
+        ['/conf/SYSTEM/defaults.vim', '/usr/share/vim/vim80/defaults.vim', '0644'],
+        ['/conf/SYSTEM/bashrc', '/root/.bashrc', '0644'],
+        ['/conf/SYSTEM/cpb.bash', '/usr/local/bin/cpb', '755'],
     ]
 
     copyfiles(CONF_ROOT, files_list)
@@ -110,6 +122,9 @@ def deploy_base_lamp():
     SERVER_ROLES = ['base', 'additionnal']
     env.roledefs = dict.fromkeys(SERVER_ROLES, [])
     install_packages(CONF_ROOT, SERVER_ROLES)
+
+    """ SSHguard configuration """
+    sshguard(SSHGUARD_WL_IP)
 
     """ Install lamp """
     SERVER_ROLES = ['http', 'php', 'cache', 'database']
@@ -231,10 +246,16 @@ def changehostkey():
     run("systemctl restart sshd")
 
 
+def sshguard(ips):
+    run("echo > /etc/sshguard/whitelist")
+    for ip in ips:
+        run("echo {sshguardip} >> /etc/sshguard/whitelist ".format(sshguardip=ip))
+    run("systemctl restart sshguard.service")
+
 def confuser(user):
     # Create the new admin user (default group=username); add to admin group
     run('getent passwd {username}  || adduser {username} --disabled-password --gecos ""'.format(
-        username=user["PASSWORD"]))
+        username=user["USER"]))
 
     # Set the password for the new user
     run('echo "{username}:{password}" | chpasswd'.format(

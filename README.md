@@ -37,7 +37,7 @@ vi install_packages.py
             }
         ]
 
-    # Not implemented
+    # DNS Not implemented
     NETWORK_DNS = "208.67.222.222"
 
     HOSTNAME = "prdweb01"
