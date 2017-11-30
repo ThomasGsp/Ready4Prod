@@ -83,6 +83,7 @@ def deploy_base_lamp():
 
     upgrade()
     changehostname(HOSTNAME)
+    changehostsfile(HOSTNAME,CONF_INTERFACES["NETWORK_IP"])
     changehostkey()
     changedns(NETWORK_DNS)
 
@@ -111,7 +112,7 @@ def deploy_base_lamp():
     print("update firewall...")
     sedvalue("{PORT_NUMBER}", PORT_SSH_NUMBER, "/etc/init.d/firewall")
     print("Restart sshd service")
-    run("systemctl restart sshd")
+    service_gestion("sshd", "restart")
 
     """ Add user key """
     for USER in USERS:
@@ -124,6 +125,14 @@ def deploy_base_lamp():
 
     """ SSHguard configuration """
     sshguard(SSHGUARD_WL_IP)
+
+    """  Configure postfix """
+    files_list = [
+        ['/conf/POSTFIX/main.cf', '/etc/postfix/main.cf', '0640'],
+    ]
+    copyfiles(CONF_ROOT, files_list)
+    sedvalue("{servername}", HOSTNAME, "/etc/postfix/main.cf")
+    service_gestion("postfix", "restart")
 
     """ Install lamp """
     SERVER_ROLES = ['http', 'php', 'cache', 'database']
@@ -138,7 +147,8 @@ def deploy_base_lamp():
         ['/conf/APACHE/2.4/conf-available/security.conf', '/etc/apache2/conf-available/security.conf', '0640'],
         ['/conf/APACHE/2.4/conf-available/badbot.conf', '/etc/apache2/conf-available/badbot.conf', '0640'],
         ['/conf/PHP/7.0/php.ini', '/etc/php/7.0/apache2/php.ini', '0640'],
-        ['/conf/LOGROTATE/apache2.conf', '/etc/logrotate.d/apache2.conf', '0640'],
+        ['/conf/LOGROTATE/apache2.conf', '/etc/logrotate.d/apache2', '0640'],
+        ['/conf/RSYSLOG/apache2.conf', '/etc/rsyslog.d/10-apache.conf', '0640'],
     ]
     copyfiles(CONF_ROOT, files_list)
     sedvalue("{servername}", HOSTNAME, "/etc/apache2/apache2.conf")
@@ -162,7 +172,7 @@ def deploy_base_lamp():
         run('mkdir -p /var/log/apache2/{servername}/'.format(servername=VHOST["SERVER_NAME"]))
         apache_siteactivation(["010.{servername}.conf".format(servername=VHOST["SERVER_NAME"])])
 
-    apache_gestion("restart")
+    service_gestion("apache", "restart")
 
     """ Configure mysql """
     for db in MYSQL_CONF:
@@ -210,12 +220,10 @@ def copyfiles(conf_root, files_list):
     for file in files_list:
         put(conf_root+file[0], file[1], mode=file[2])
 
+def service_gestion(action, service):
+    run("systemctl {actiontype} {servicename}".format(actiontype=action, servicename=service))
 
 #  APACHE  #
-def apache_gestion(action):
-    run("systemctl {actiontype} apache2".format(actiontype=action))
-
-
 def apache_modactivation(modslist):
     for mod in modslist:
         run("a2enmod {modname}".format(modname=mod))
@@ -248,14 +256,14 @@ def changehostkey():
     print("Generate new key...")
     run("dpkg-reconfigure openssh-server")
     print("Restart sshd service")
-    run("systemctl restart sshd")
+    service_gestion("sshd", "restart")
 
 
 def sshguard(ips):
     run("echo > /etc/sshguard/whitelist")
     for ip in ips:
         run("echo {sshguardip} >> /etc/sshguard/whitelist ".format(sshguardip=ip))
-    run("systemctl restart sshguard.service")
+    service_gestion("sshguard.service", "restart")
 
 def confuser(user):
     # Create the new admin user (default group=username); add to admin group
@@ -278,6 +286,13 @@ def confuser(user):
 
 def changehostname(hostname):
     run("echo {0}> /etc/hostname".format(hostname))
+    print("To apply change, you must reboot")
+
+
+def changehostsfile(hostname, ip):
+    run("echo > /etc/hosts")
+    run("echo 127.0.0.1 localhost >> /etc/hostname")
+    run("echo {0} {1} >> /etc/hostname".format(ip, hostname))
     print("To apply change, you must reboot")
 
 

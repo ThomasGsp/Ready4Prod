@@ -1,0 +1,34 @@
+# POSTFIX CONFIGURATION
+
+smtpd_banner = $myhostname ESMTP $mail_name (Debian/GNU)
+myhostname = {servername}
+
+mydestination = {servername}, localhost.local, localhost
+mynetworks_style = host
+mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128
+inet_interfaces = 127.0.0.1
+
+biff = no
+append_dot_mydomain = no
+readme_directory = no
+
+alias_maps = hash:/etc/aliases
+alias_database = hash:/etc/aliases
+
+relayhost =
+smtpd_relay_restrictions = permit_mynetworks permit_sasl_authenticated defer_unauth_destination
+recipient_delimiter = +
+mailbox_size_limit = 0
+
+
+smtpd_tls_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem
+smtpd_tls_key_file=/etc/ssl/private/ssl-cert-snakeoil.key
+smtpd_use_tls=yes
+smtpd_tls_session_cache_database = btree:${data_directory}/smtpd_scache
+smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
+
+transport_maps =  hash:/etc/postfix/transport_slow
+
+slow_destination_recipient_limit = 20
+slow_destination_concurrency_limit = 2
+slow_destination_rate_delay = 2s
