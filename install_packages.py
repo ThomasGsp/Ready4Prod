@@ -26,11 +26,13 @@ def deploy_base_lamp():
         [
             {
                 "SERVER_NAME": "sitedemo.com",
-                "SERVER_NAME_ALIAS": ["www.sitedemo.com", "www.sitedemo.fr"]
+                "SERVER_NAME_ALIAS": ["www.sitedemo.com", "www.sitedemo.fr"],
+                "FILES": ""
             },
             {
                 "SERVER_NAME": "sitedemo1.com",
-                "SERVER_NAME_ALIAS": ["www.sitedemo1.com", "www.sitedemo1.fr"]
+                "SERVER_NAME_ALIAS": ["www.sitedemo1.com", "www.sitedemo1.fr"],
+                "FILES": "/data/sitedemo1.com/Flexor.zip"
             }
         ]
 
@@ -158,19 +160,46 @@ def deploy_base_lamp():
     """ Configure apache vhosts """
     print("configure vhost...")
     for VHOST in VHOSTS:
+        run('mkdir -p /var/www/{servername}/prod/'.format(servername=VHOST["SERVER_NAME"]))
+        run('mkdir -p /var/log/apache2/{servername}/'.format(servername=VHOST["SERVER_NAME"]))
+
+        filename, file_extension = os.path.splitext(CONF_ROOT + VHOST["FILES"])
+
         copyfiles(CONF_ROOT, [
             ['/conf/APACHE/2.4/sites-available/010-mywebsite.com.conf', '/etc/apache2/sites-available/010.{servername}.conf'
-                  .format(servername=VHOST["SERVER_NAME"]), '0640']
+                  .format(servername=VHOST["SERVER_NAME"]), '0640'],
+            ['{files}'.format(files=VHOST["FILES"]), '/var/www/{servername}/prod/site_tmp{fileexten}'
+                  .format(servername=VHOST["SERVER_NAME"], fileexten=file_extension), '0640']
         ])
         sedvalue("{domain_name}", VHOST["SERVER_NAME"], "/etc/apache2/sites-available/010.{servername}.conf"
                  .format(servername=VHOST["SERVER_NAME"]))
         sedvalue("{domain_name_alias}", ''.join(VHOST["SERVER_NAME_ALIAS"]), "/etc/apache2/sites-available/010.{servername}.conf"
                  .format(servername=VHOST["SERVER_NAME"]))
 
-        run('mkdir -p /var/www/{servername}/prod/'.format(servername=VHOST["SERVER_NAME"]))
+        if VHOST["FILES"]:
+            sitefile = "/var/www/{servername}/prod/site_tmp{fileexten}".format(servername=VHOST["SERVER_NAME"], fileexten=file_extension)
+            sitedir = "/var/www/{servername}/prod/".format(servername=VHOST["SERVER_NAME"])
+            if file_extension == ".zip":
+                run("unzip {0} -d {1}".format(sitefile, sitedir))
+                run("rm {0}".format(sitefile))
+            elif file_extension == ".tar":
+                run("tar -xvf  {0} {1}".format(sitefile, sitedir))
+                run("rm {0}".format(sitefile))
+            elif file_extension == ".tar.gz":
+                run("tar -xzvf  {0} {1}".format(sitefile, sitedir))
+                run("rm {0}".format(sitefile))
+            elif file_extension == ".tar.bz2":
+                run("tar -xjvf  {0} {1}".format(sitefile, sitedir))
+                run("rm {0}".format(sitefile))
+            else:
+                print("Extension not found")
+
+
         run('chown 33:33 -R /var/www/{servername}/prod/'.format(servername=VHOST["SERVER_NAME"]))
-        run('mkdir -p /var/log/apache2/{servername}/'.format(servername=VHOST["SERVER_NAME"]))
+        run('find /var/www/{servername} -type d -exec chmod 750 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
+        run('find /var/www/{servername} -type f -exec chmod 640 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
         apache_siteactivation(["010.{servername}.conf".format(servername=VHOST["SERVER_NAME"])])
+
 
     service_gestion("apache2", "restart")
 
@@ -218,7 +247,10 @@ def sedvalue(str_src, str_dest, conf_file):
 
 def copyfiles(conf_root, files_list):
     for file in files_list:
-        put(conf_root+file[0], file[1], mode=file[2])
+        try:
+            put(conf_root+file[0], file[1], mode=file[2])
+        except BaseException as e:
+            print(e)
 
 def service_gestion(service, action):
     run("systemctl {actiontype} {servicename}".format(actiontype=action, servicename=service))
