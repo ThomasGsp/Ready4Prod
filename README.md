@@ -23,7 +23,7 @@ Build your linux LAMP server.
 * Configure network
 * Configure ssh server (port & others)
 * Install ssh guard (brute force...)
-* New bash rc
+* New bashrc
 * Install lamp stack (basic stack or avanced stack)
 * Configure LAMP softwares (apache, mariadb, php...)
 * Configure smtp server (postfix)
@@ -58,12 +58,15 @@ vi install_packages.py
         [
             {
                 "SERVER_NAME": "sitedemo.com",
-                "SERVER_NAME_ALIAS": ["www.sitedemo.com", "www.sitedemo.fr"]
+                "SERVER_NAME_ALIAS": ["www.sitedemo.com", "www.sitedemo.fr"],
+                "FILES": "/data/sitedemo.com/index.html"
             },
             {
                 "SERVER_NAME": "sitedemo1.com",
-                "SERVER_NAME_ALIAS": ["www.sitedemo1.com", "www.sitedemo1.fr"]
+                "SERVER_NAME_ALIAS": ["www.sitedemo1.com", "www.sitedemo1.fr"],
+                "FILES": "/data/sitedemo1.com/startbootstrap-resume-gh-pages.zip"
             }
+        ]
         ]
 
     # DNS Not implemented
@@ -106,3 +109,9 @@ vi install_packages.py
 ``` bash
 fab -f install_packages.py deploy_base_lamp -H <ip_srv>
 ```
+
+
+##### External sources:
+* bashrc : http://mindnugget.com/bashrc/.bashrc
+* motd www.tomzone.fr/creation-dun-motd-dynamique/
+* awk script for network configuration https://github.com/JoeKuan/Network-Interfaces-Script
