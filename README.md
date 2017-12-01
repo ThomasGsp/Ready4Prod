@@ -1,11 +1,37 @@
 # Ready4Prod
 
-Build your linux basic lamp server.
+Build your linux LAMP server.
 
 * Author : Tlams
 * Date : Nov 2017
 * Status: Stable
+* Website: https://www.ready4prod.com/
 
+
+##### Stack available:
+* Basic LAMP stack
+
+### Features
+* Upgrade your VM
+* Change hostname
+* Change hosts file
+* Change ssh host key
+* Change DNS
+* New motd (see example on bottom)
+* Add an IPTABLES firewall
+* Configure VIM
+* Configure network
+* Configure ssh server (port & others)
+* Install ssh guard (brute force...)
+* New bash rc
+* Install lamp stack (basic stack or avanced stack)
+* Configure LAMP softwares (apache, mariadb, php...)
+* Configure smtp server (postfix)
+* Configure log rotation
+* Create basic vhosts
+
+##### Next features:
+* New stack with cache, ssl and fpm-pools
 
 ## Quick start
 
