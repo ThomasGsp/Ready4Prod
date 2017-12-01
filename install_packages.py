@@ -11,6 +11,7 @@ def deploy_base_lamp():
     PROJECT_ROOT = os.path.dirname(__file__)
     CONF_ROOT = os.path.join(PROJECT_ROOT, 'lamp-debian9')
 
+    ACTIONS = []
 
     env.user = 'root'
     env.key_filename = '~/.ssh/id_rsa'
@@ -20,6 +21,37 @@ def deploy_base_lamp():
     * Configuration Zone *
     **********************
     """
+
+    # Composants list
+    # ALL ( All composants = default)
+    # UPGRADE
+    # HOSTNAME
+    # SSHHOSTKEY
+    # DNS
+    # USERBASHRC
+    # NETWORK
+    # MOTD
+    # FW ( Firewall)
+    # VIM (Vim configuration)
+    # SSH (sshd + sshguard)
+    # SMTP (postfix conf)
+    # LOGS
+    # VHOSTS
+    # USERS
+
+    BASE = ["UPGRADE", "HOSTNAME",
+          "SSHHOSTKEY", "DNS",
+          "USERBASHRC", "NETWORK",
+          "MOTD", "FW",
+          "VIM", "SSH",
+          "SMTP", "LOGS",
+          "USERS"
+          ]
+
+    # LAMP_BASE (Apache, mariadb, phpmod)  OR
+    # LAMP_AVANCED (Apache, mariadb, php-fpm, ssl, varnish) // not avalaible
+    LAMP = ["LAMP_BASE"]
+
 
     # Vhost apache2.4 configuration
     VHOSTS = \
@@ -83,65 +115,87 @@ def deploy_base_lamp():
     ************
     """
 
-    upgrade()
-    changehostname(HOSTNAME)
-    changehostsfile(HOSTNAME,CONF_INTERFACES["NETWORK_IP"])
-    changehostkey()
-    changedns(NETWORK_DNS)
-    dynmotd(CONF_ROOT)
+    ACTIONS.extend(BASE)
+    ACTIONS.extend(LAMP)
+    CONF_FILE = ""
+    if "LAMP_ADVANCED" in ACTIONS:
+        CONF_FILE = CONF_ROOT+"/debian9_lamp_advanced.ini"
+    elif "LAMP_BASE" in ACTIONS:
+        CONF_FILE = CONF_ROOT+"/debian9_lamp_basic.ini"
+
+    if "UPGRADE" in ACTIONS: upgrade()
+    if "HOSTNAME" in ACTIONS: changehostname(HOSTNAME)
+    if "HOSTNAME" in ACTIONS: changehostsfile(HOSTNAME,CONF_INTERFACES["NETWORK_IP"])
+    if "SSHHOSTKEY" in ACTIONS: changehostkey()
+    if "DNS" in ACTIONS: changedns(NETWORK_DNS)
+    if "MOTD" in ACTIONS: dynmotd(CONF_ROOT)
 
     """ Apply system base configuration """
     # File Source, Dest, filemode
+
     files_list = [
         ['/conf/SYSTEM/sources.list', '/etc/apt/sources.list', '0640'],
-        ['/conf/SYSTEM/firewall.sh', '/etc/init.d/firewall', '0740'],
-        ['/conf/SYSTEM/sshd_config', '/etc/ssh/sshd_config', '0640'],
-        ['/conf/SYSTEM/defaults.vim', '/usr/share/vim/vim80/defaults.vim', '0644'],
-        ['/conf/SYSTEM/bashrc', '/root/.bashrc', '0644'],
         ['/conf/SYSTEM/cpb.bash', '/usr/local/bin/cpb', '0755'],
         ['/conf/SYSTEM/bash_profile', '/root/.bash_profile', '0640'],
     ]
+    if "USERBASHRC" in ACTIONS: files_list.extend(
+        ['/conf/SYSTEM/bashrc', '/root/.bashrc', '0644'])
+    if "SSH" in ACTIONS: files_list.extend(
+        ['/conf/SYSTEM/sshd_config', '/etc/ssh/sshd_config', '0640'])
+    if "FW" in ACTIONS: files_list.extend(
+        ['/conf/SYSTEM/firewall.sh', '/etc/init.d/firewall', '0740'])
+    if "VIM" in ACTIONS: files_list.extend(
+        ['/conf/SYSTEM/defaults.vim', '/usr/share/vim/vim80/defaults.vim', '0644'])
 
     copyfiles(CONF_ROOT, files_list)
 
     # Firewall
-    print("Configure firewall...")
-    sedvalue("{PUBLIC_IP}", CONF_INTERFACES["NETWORK_IP"], "/etc/init.d/firewall")
-    print("Apply Firewall")
-    run("bash /etc/init.d/firewall")
+    if "FW" in ACTIONS or "ALL" in ACTIONS:
+        print("Configure firewall...")
+        sedvalue("{PUBLIC_IP}", CONF_INTERFACES["NETWORK_IP"], "/etc/init.d/firewall")
+        print("Apply Firewall")
+        run("bash /etc/init.d/firewall")
 
     # Update port ssh
-    print("Change ssh port...")
-    sedvalue("{PORT_NUMBER}", PORT_SSH_NUMBER, "/etc/ssh/sshd_config")
-    print("update firewall...")
-    sedvalue("{PORT_NUMBER}", PORT_SSH_NUMBER, "/etc/init.d/firewall")
-    print("Restart sshd service")
-    service_gestion("sshd", "restart")
+    if "SSH" in ACTIONS or "ALL" in ACTIONS:
+        print("Change ssh port...")
+        sedvalue("{PORT_NUMBER}", PORT_SSH_NUMBER, "/etc/ssh/sshd_config")
+        print("update firewall...")
+        sedvalue("{PORT_NUMBER}", PORT_SSH_NUMBER, "/etc/init.d/firewall")
+        print("Restart sshd service")
+        service_gestion("sshd", "restart")
 
     """ Add user key """
-    for USER in USERS:
-        confuser(USER)
+    if "USERS" in ACTIONS or "ALL" in ACTIONS:
+        for USER in USERS:
+            confuser(USER)
 
     """ Install packages """
     SERVER_ROLES = ['base', 'additionnal']
     env.roledefs = dict.fromkeys(SERVER_ROLES, [])
-    install_packages(CONF_ROOT, SERVER_ROLES)
+    install_packages(CONF_FILE, SERVER_ROLES)
 
     """ SSHguard configuration """
-    sshguard(SSHGUARD_WL_IP)
+    if "SSH" in ACTIONS or "ALL" in ACTIONS:
+        sshguard(SSHGUARD_WL_IP)
 
     """  Configure postfix """
-    files_list = [
-        ['/conf/POSTFIX/main.cf', '/etc/postfix/main.cf', '0640'],
-    ]
-    copyfiles(CONF_ROOT, files_list)
-    sedvalue("{servername}", HOSTNAME, "/etc/postfix/main.cf")
-    service_gestion("postfix", "restart")
+    if "SMTP" in ACTIONS or "ALL" in ACTIONS:
+        files_list = [
+            ['/conf/POSTFIX/main.cf', '/etc/postfix/main.cf', '0640'],
+        ]
+        copyfiles(CONF_ROOT, files_list)
+        sedvalue("{servername}", HOSTNAME, "/etc/postfix/main.cf")
+        service_gestion("postfix", "restart")
 
     """ Install lamp """
-    SERVER_ROLES = ['http', 'php', 'cache', 'database']
+    if "LAMP_BASE" in ACTIONS:
+        SERVER_ROLES = ['http', 'php', 'cache', 'database']
+    elif "LAMP_ADVANCED" in ACTIONS:
+        SERVER_ROLES = ['http', 'php', 'cache', 'database', 'ssl']
+
     env.roledefs = dict.fromkeys(SERVER_ROLES, [])
-    install_packages(CONF_ROOT, SERVER_ROLES)
+    install_packages(CONF_FILE, SERVER_ROLES)
 
     """ Configure apache base """
     files_list = [
@@ -150,56 +204,65 @@ def deploy_base_lamp():
         ['/conf/APACHE/2.4/sites-available/000-default.conf', '/etc/apache2/sites-available/000-default.conf', '0640'],
         ['/conf/APACHE/2.4/conf-available/security.conf', '/etc/apache2/conf-available/security.conf', '0640'],
         ['/conf/APACHE/2.4/conf-available/badbot.conf', '/etc/apache2/conf-available/badbot.conf', '0640'],
-        ['/conf/PHP/7.0/php.ini', '/etc/php/7.0/apache2/php.ini', '0640'],
-        ['/conf/LOGROTATE/apache2.conf', '/etc/logrotate.d/apache2', '0640'],
-        ['/conf/RSYSLOG/apache2.conf', '/etc/rsyslog.d/10-apache.conf', '0640'],
     ]
+
+    if "LOGS" in ACTIONS:
+        LOGFILES = [
+            ['/conf/LOGROTATE/apache2.conf', '/etc/logrotate.d/apache2', '0640'],
+            ['/conf/RSYSLOG/apache2.conf', '/etc/rsyslog.d/10-apache.conf', '0640']
+        ]
+        files_list.extend(LOGFILES)
+
+    if "LAMP_BASE" in ACTIONS:
+        files_list.extend(['/conf/PHP/7.0/php.ini', '/etc/php/7.0/apache2/php.ini', '0640'])
+
     copyfiles(CONF_ROOT, files_list)
     sedvalue("{servername}", HOSTNAME, "/etc/apache2/apache2.conf")
     apache_modactivation(["headers"])
     apache_confactivation(["security.conf", "badbot.conf"])
 
     """ Configure apache vhosts """
-    print("configure vhost...")
-    for VHOST in VHOSTS:
-        run('mkdir -p /var/www/{servername}/prod/'.format(servername=VHOST["SERVER_NAME"]))
-        run('mkdir -p /var/log/apache2/{servername}/'.format(servername=VHOST["SERVER_NAME"]))
+    if "VHOSTS" in ACTIONS or "ALL" in ACTIONS:
+        print("configure vhost...")
+        for VHOST in VHOSTS:
+            run('mkdir -p /var/www/{servername}/prod/'.format(servername=VHOST["SERVER_NAME"]))
+            run('mkdir -p /var/log/apache2/{servername}/'.format(servername=VHOST["SERVER_NAME"]))
 
-        filename, file_extension = os.path.splitext(CONF_ROOT + VHOST["FILES"])
+            filename, file_extension = os.path.splitext(CONF_ROOT + VHOST["FILES"])
 
-        copyfiles(CONF_ROOT, [
-            ['/conf/APACHE/2.4/sites-available/010-mywebsite.com.conf', '/etc/apache2/sites-available/010.{servername}.conf'
-                  .format(servername=VHOST["SERVER_NAME"]), '0640'],
-            ['{files}'.format(files=VHOST["FILES"]), '/var/www/{servername}/prod/site_tmp{fileexten}'
-                  .format(servername=VHOST["SERVER_NAME"], fileexten=file_extension), '0640']
-        ])
-        sedvalue("{domain_name}", VHOST["SERVER_NAME"], "/etc/apache2/sites-available/010.{servername}.conf"
-                 .format(servername=VHOST["SERVER_NAME"]))
-        sedvalue("{domain_name_alias}", ''.join(VHOST["SERVER_NAME_ALIAS"]), "/etc/apache2/sites-available/010.{servername}.conf"
-                 .format(servername=VHOST["SERVER_NAME"]))
+            copyfiles(CONF_ROOT, [
+                ['/conf/APACHE/2.4/sites-available/010-mywebsite.com.conf', '/etc/apache2/sites-available/010.{servername}.conf'
+                      .format(servername=VHOST["SERVER_NAME"]), '0640'],
+                ['{files}'.format(files=VHOST["FILES"]), '/var/www/{servername}/prod/site_tmp{fileexten}'
+                      .format(servername=VHOST["SERVER_NAME"], fileexten=file_extension), '0640']
+            ])
+            sedvalue("{domain_name}", VHOST["SERVER_NAME"], "/etc/apache2/sites-available/010.{servername}.conf"
+                     .format(servername=VHOST["SERVER_NAME"]))
+            sedvalue("{domain_name_alias}", ''.join(VHOST["SERVER_NAME_ALIAS"]), "/etc/apache2/sites-available/010.{servername}.conf"
+                     .format(servername=VHOST["SERVER_NAME"]))
 
-        if VHOST["FILES"]:
-            sitefile = "/var/www/{servername}/prod/site_tmp{fileexten}".format(servername=VHOST["SERVER_NAME"], fileexten=file_extension)
-            sitedir = "/var/www/{servername}/prod/".format(servername=VHOST["SERVER_NAME"])
-            if file_extension == ".zip":
-                run("unzip {0} -d {1}".format(sitefile, sitedir))
-                run("rm {0}".format(sitefile))
-            elif file_extension == ".tar":
-                run("tar -xvf  {0} {1}".format(sitefile, sitedir))
-                run("rm {0}".format(sitefile))
-            elif file_extension == ".tar.gz":
-                run("tar -xzvf  {0} {1}".format(sitefile, sitedir))
-                run("rm {0}".format(sitefile))
-            elif file_extension == ".tar.bz2":
-                run("tar -xjvf  {0} {1}".format(sitefile, sitedir))
-                run("rm {0}".format(sitefile))
+            if VHOST["FILES"]:
+                sitefile = "/var/www/{servername}/prod/site_tmp{fileexten}".format(servername=VHOST["SERVER_NAME"], fileexten=file_extension)
+                sitedir = "/var/www/{servername}/prod/".format(servername=VHOST["SERVER_NAME"])
+                if file_extension == ".zip":
+                    run("unzip {0} -d {1}".format(sitefile, sitedir))
+                    run("rm {0}".format(sitefile))
+                elif file_extension == ".tar":
+                    run("tar -xvf  {0} {1}".format(sitefile, sitedir))
+                    run("rm {0}".format(sitefile))
+                elif file_extension == ".tar.gz":
+                    run("tar -xzvf  {0} {1}".format(sitefile, sitedir))
+                    run("rm {0}".format(sitefile))
+                elif file_extension == ".tar.bz2":
+                    run("tar -xjvf  {0} {1}".format(sitefile, sitedir))
+                    run("rm {0}".format(sitefile))
 
 
 
-        run('chown 33:33 -R /var/www/{servername}'.format(servername=VHOST["SERVER_NAME"]))
-        run('find /var/www/{servername} -type d -exec chmod 750 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
-        run('find /var/www/{servername} -type f -exec chmod 640 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
-        apache_siteactivation(["010.{servername}.conf".format(servername=VHOST["SERVER_NAME"])])
+            run('chown 33:33 -R /var/www/{servername}'.format(servername=VHOST["SERVER_NAME"]))
+            run('find /var/www/{servername} -type d -exec chmod 750 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
+            run('find /var/www/{servername} -type f -exec chmod 640 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
+            apache_siteactivation(["010.{servername}.conf".format(servername=VHOST["SERVER_NAME"])])
 
 
     service_gestion("apache2", "restart")
@@ -209,7 +272,8 @@ def deploy_base_lamp():
         mysql_base("create", db)
         mysql_user("create", db)
 
-    changeinterface(CONF_ROOT, CONF_INTERFACES)
+    if "NETWORK" in ACTIONS or "ALL" in ACTIONS:
+        changeinterface(CONF_ROOT, CONF_INTERFACES)
 
 
 # ------------------------------------------ #
@@ -380,7 +444,7 @@ def changeinterface(CONF_ROOT, CONF_INTERFACES):
 
 
 def install_packages(conf_root, roles):
-    config_file = os.path.join(conf_root, u'debian9.ini' % env)
+    config_file = os.path.join(conf_root % env)
     config = ConfigParser.SafeConfigParser()
     config.read(config_file)
     for role in roles:

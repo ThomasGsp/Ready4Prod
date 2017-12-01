@@ -4,7 +4,7 @@ Build your linux LAMP server.
 
 * Author : Tlams
 * Date : Nov 2017
-* Status: Stable
+* Status: Active development
 * Website: https://www.ready4prod.com/
 
 
@@ -133,6 +133,7 @@ fab -f install_packages.py deploy_base_lamp -H <ip_srv>
 ![netstat](./img/lamp_base_netstat.png)
 
 
+### Features propositions and issues
 
 
 ##### External sources:
