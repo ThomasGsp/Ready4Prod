@@ -24,29 +24,18 @@ def deploy_base_lamp():
 
     # Composants list
     # ALL ( All composants = default)
-    # UPGRADE
-    # HOSTNAME
-    # SSHHOSTKEY
-    # DNS
-    # USERBASHRC
-    # NETWORK
-    # MOTD
-    # FW ( Firewall)
-    # VIM (Vim configuration)
-    # SSH (sshd + sshguard)
-    # SMTP (postfix conf)
-    # LOGS
-    # VHOSTS
-    # USERS
+    # UPGRADE, HOSTNAME, SSHHOSTKEY, DNS, USERBASHRC, NETWORK, MOTD ,FW ( Firewall) ,VIM (Vim configuration)
+    # SSH (sshd + sshguard), SMTP (postfix conf), LOGS, VHOSTS, USERS
 
-    BASE = ["UPGRADE", "HOSTNAME",
-          "SSHHOSTKEY", "DNS",
-          "USERBASHRC", "NETWORK",
-          "MOTD", "FW",
-          "VIM", "SSH",
-          "SMTP", "LOGS",
-          "USERS"
-          ]
+    BASE = [
+        "UPGRADE", "HOSTNAME",
+        "SSHHOSTKEY", "DNS",
+        "USERBASHRC", "NETWORK",
+        "MOTD", "FW",
+        "VIM", "SSH",
+        "SMTP", "LOGS",
+        "USERS"
+    ]
 
     # LAMP_BASE (Apache, mariadb, phpmod)  OR
     # LAMP_AVANCED (Apache, mariadb, php-fpm, ssl, varnish) // not avalaible
@@ -125,7 +114,7 @@ def deploy_base_lamp():
 
     if "UPGRADE" in ACTIONS: upgrade()
     if "HOSTNAME" in ACTIONS: changehostname(HOSTNAME)
-    if "HOSTNAME" in ACTIONS: changehostsfile(HOSTNAME,CONF_INTERFACES["NETWORK_IP"])
+    if "HOSTNAME" in ACTIONS: changehostsfile(HOSTNAME, CONF_INTERFACES["NETWORK_IP"])
     if "SSHHOSTKEY" in ACTIONS: changehostkey()
     if "DNS" in ACTIONS: changedns(NETWORK_DNS)
     if "MOTD" in ACTIONS: dynmotd(CONF_ROOT)
@@ -259,13 +248,10 @@ def deploy_base_lamp():
                     run("tar -xjvf  {0} {1}".format(sitefile, sitedir))
                     run("rm {0}".format(sitefile))
 
-
-
             run('chown 33:33 -R /var/www/{servername}'.format(servername=VHOST["SERVER_NAME"]))
             run('find /var/www/{servername} -type d -exec chmod 750 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
             run('find /var/www/{servername} -type f -exec chmod 640 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
             apache_siteactivation(["010.{servername}.conf".format(servername=VHOST["SERVER_NAME"])])
-
 
     service_gestion("apache2", "restart")
 
@@ -277,6 +263,15 @@ def deploy_base_lamp():
     if "NETWORK" in ACTIONS:
         changeinterface(CONF_ROOT, CONF_INTERFACES)
 
+
+    """ SPECIFICS TASK FOR ADVANCED """
+    if "LAMP_ADVANCED" in ACTIONS:
+        # Install varnish & configure
+        # Install lestencrypt & configure
+        # Install hitch & configure
+        # Configure php-fpm (pools)
+        # Configure apache2 (mod_fastcgi.c)
+        pass
 
 # ------------------------------------------ #
 
