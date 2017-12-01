@@ -220,7 +220,6 @@ def mysql_iniconf():
     run("mysql -e 'DROP USER ''@'$(hostname)';'")
     run("mysql -e 'DROP DATABASE test;'")
     run("mysql -e 'FLUSH PRIVILEGES;'")
-    return
 
 
 def mysql_user(action, value):
@@ -230,7 +229,6 @@ def mysql_user(action, value):
     elif action == "delete":
         run('mysql -e "DROP USER {username};"'.format(username=value["username"]))
     run('mysql -e "FLUSH PRIVILEGES;"')
-    return
 
 
 def mysql_base(action, value):
@@ -238,7 +236,6 @@ def mysql_base(action, value):
         run('mysql -e "CREATE  DATABASE IF NOT EXISTS  {dbname};"'.format(dbname=value["database"]))
     elif action == "delete":
         run('mysql -e "DROP  DATABASE  {dbname};"'.format(dbname=value["database"]))
-    return
 
 
 #  TRANSVERSE  #
