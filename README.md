@@ -54,6 +54,8 @@ git clone git@github.com:ThomasGsp/Ready4Prod.git
 vi install_packages.py
     (....)
 
+
+    # Vhost apache2.4 configuration
     VHOSTS = \
         [
             {
@@ -67,14 +69,20 @@ vi install_packages.py
                 "FILES": "/data/sitedemo1.com/startbootstrap-resume-gh-pages.zip"
             }
         ]
-        ]
 
-    # DNS Not implemented
-    NETWORK_DNS = "208.67.222.222"
+    # DNS Servers
+    NETWORK_DNS = ["208.67.222.222", "8.8.8.8"]
 
+    # VM HOSTNAME
     HOSTNAME = "prdweb01"
+
+    # SSH PORT
     PORT_SSH_NUMBER = "22"
 
+    # SSHGUARD ip white list
+    SSHGUARD_WL_IP = ["192.168.1.1", "172.16.10.5"]
+
+    # NETWORK configuration
     CONF_INTERFACES = {}
     CONF_INTERFACES["NETWORK_IP"] = "172.16.0.207"
     CONF_INTERFACES["NETWORK_MASK"] = "255.255.255.0"
@@ -82,6 +90,7 @@ vi install_packages.py
     CONF_INTERFACES["mode"] = "static"
     CONF_INTERFACES["DEVISE"] = getinsterfacesname()
 
+    # USERS configuration
     USERS = \
         [
             {
@@ -92,6 +101,7 @@ vi install_packages.py
             }
     ]
 
+    # Mysql users and databases configurations
     MYSQL_CONF = \
         [
             {

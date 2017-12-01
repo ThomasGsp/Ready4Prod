@@ -21,7 +21,7 @@ def deploy_base_lamp():
     **********************
     """
 
-    # Vhost nginx configuration
+    # Vhost apache2.4 configuration
     VHOSTS = \
         [
             {
