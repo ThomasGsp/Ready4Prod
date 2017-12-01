@@ -48,12 +48,17 @@ def deploy_base_lamp():
             {
                 "SERVER_NAME": "sitedemo.com",
                 "SERVER_NAME_ALIAS": ["www.sitedemo.com", "www.sitedemo.fr"],
-                "FILES": "/data/sitedemo.com/index.html"
+                "FILES": "/data/sitedemo.com/index.html",
+                "HTTPCACHE": False,
+                "SSL": False
             },
             {
                 "SERVER_NAME": "sitedemo1.com",
                 "SERVER_NAME_ALIAS": ["www.sitedemo1.com", "www.sitedemo1.fr"],
-                "FILES": "/data/sitedemo1.com/startbootstrap-resume-gh-pages.zip"
+                "FILES": "/data/sitedemo1.com/startbootstrap-resume-gh-pages.zip",
+                "HTTPCACHE": False,
+                "SSL": False
+
             }
         ]
 
