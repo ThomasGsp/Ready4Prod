@@ -27,12 +27,12 @@ def deploy_base_lamp():
             {
                 "SERVER_NAME": "sitedemo.com",
                 "SERVER_NAME_ALIAS": ["www.sitedemo.com", "www.sitedemo.fr"],
-                "FILES": "/data/sitedemo.com/index.php"
+                "FILES": "/data/sitedemo.com/index.html"
             },
             {
                 "SERVER_NAME": "sitedemo1.com",
                 "SERVER_NAME_ALIAS": ["www.sitedemo1.com", "www.sitedemo1.fr"],
-                "FILES": "/data/sitedemo1.com/Flexor.zip"
+                "FILES": "/data/sitedemo1.com/startbootstrap-resume-gh-pages.zip"
             }
         ]
 
@@ -88,6 +88,7 @@ def deploy_base_lamp():
     changehostsfile(HOSTNAME,CONF_INTERFACES["NETWORK_IP"])
     changehostkey()
     changedns(NETWORK_DNS)
+    dynmotd(CONF_ROOT)
 
     """ Apply system base configuration """
     # File Source, Dest, filemode
@@ -97,7 +98,8 @@ def deploy_base_lamp():
         ['/conf/SYSTEM/sshd_config', '/etc/ssh/sshd_config', '0640'],
         ['/conf/SYSTEM/defaults.vim', '/usr/share/vim/vim80/defaults.vim', '0644'],
         ['/conf/SYSTEM/bashrc', '/root/.bashrc', '0644'],
-        ['/conf/SYSTEM/cpb.bash', '/usr/local/bin/cpb', '755'],
+        ['/conf/SYSTEM/cpb.bash', '/usr/local/bin/cpb', '0755'],
+        ['/conf/SYSTEM/bash_profile', '/root/.bash_profile', '0640'],
     ]
 
     copyfiles(CONF_ROOT, files_list)
@@ -191,8 +193,7 @@ def deploy_base_lamp():
             elif file_extension == ".tar.bz2":
                 run("tar -xjvf  {0} {1}".format(sitefile, sitedir))
                 run("rm {0}".format(sitefile))
-            else:
-                print("Extension not found")
+
 
 
         run('chown 33:33 -R /var/www/{servername}'.format(servername=VHOST["SERVER_NAME"]))
@@ -296,6 +297,21 @@ def sshguard(ips):
     for ip in ips:
         run("echo {sshguardip} >> /etc/sshguard/whitelist ".format(sshguardip=ip))
     service_gestion("sshguard.service", "restart")
+
+
+
+def dynmotd(CONF_ROOT):
+    run('if [ ! -d "/etc/update-motd.d/" ];then mkdir /etc/update-motd.d; chmod +x /etc/update-motd.d; fi')
+    run('rm -f /etc/motd')
+    run('rm -f /etc/update-motd.d/*')
+    run('ln -sf /var/run/motd.dynamic.new /etc/motd')
+
+    files_list = [
+        ['/conf/SYSTEM/motd.bash', '/etc/update-motd.d/10-sysinfo', '0755'],
+    ]
+
+    copyfiles(CONF_ROOT, files_list)
+
 
 def confuser(user):
     # Create the new admin user (default group=username); add to admin group

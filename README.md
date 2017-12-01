@@ -9,6 +9,9 @@ Build your linux basic lamp server.
 
 ## Quick start
 
+### Limitations
+* Do not use on a existent server (in production)!
+
 ### Requirement:
 * Linux (Debian 9) server, with full root access
 * Python with fabric (http://www.fabfile.org/)
