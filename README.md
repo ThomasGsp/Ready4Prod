@@ -9,10 +9,10 @@ Build your linux LAMP server.
 
 
 ##### Stack available:
-* Basic LAMP stack
+* Basic LAMP
 
 ### Features
-* Upgrade your VM
+* Upgrade VM
 * Change hostname
 * Change hosts file
 * Change ssh host key
@@ -22,7 +22,7 @@ Build your linux LAMP server.
 * Configure VIM
 * Configure network
 * Configure ssh server (port & others)
-* Install ssh guard (brute force...)
+* Install a ssh guard (brute force...)
 * New bashrc
 * Install lamp stack (basic stack or avanced stack)
 * Configure LAMP softwares (apache, mariadb, php...)
@@ -109,6 +109,20 @@ vi install_packages.py
 ``` bash
 fab -f install_packages.py deploy_base_lamp -H <ip_srv>
 ```
+
+
+
+### Results:
+#### bashrc 
+![bashrc](./img/lamp_base_bashrc.png)
+#### iptables rules 
+![iptables](./img/lamp_base_iptables.png)
+#### motd
+![motd](./img/lamp_base_motd.png)
+#### netstat (base lamp)
+![netstat](./img/lamp_base_netstat.png)
+
+
 
 
 ##### External sources:
