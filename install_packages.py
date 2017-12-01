@@ -138,37 +138,36 @@ def deploy_base_lamp():
         ['/conf/SYSTEM/cpb.bash', '/usr/local/bin/cpb', '0755'],
         ['/conf/SYSTEM/bash_profile', '/root/.bash_profile', '0640'],
     ]
-    if "USERBASHRC" in ACTIONS: files_list.extend(
-        ['/conf/SYSTEM/bashrc', '/root/.bashrc', '0644'])
-    if "SSH" in ACTIONS: files_list.extend(
+    if "USERBASHRC" in ACTIONS: files_list.append(
+        ['/conf/SYSTEM/bashrc', '/root/.bashrc', '0640'])
+    if "SSH" in ACTIONS: files_list.append(
         ['/conf/SYSTEM/sshd_config', '/etc/ssh/sshd_config', '0640'])
-    if "FW" in ACTIONS: files_list.extend(
+    if "FW" in ACTIONS: files_list.append(
         ['/conf/SYSTEM/firewall.sh', '/etc/init.d/firewall', '0740'])
-    if "VIM" in ACTIONS: files_list.extend(
+    if "VIM" in ACTIONS: files_list.append(
         ['/conf/SYSTEM/defaults.vim', '/usr/share/vim/vim80/defaults.vim', '0644'])
 
     copyfiles(CONF_ROOT, files_list)
 
     # Firewall
-    if "FW" in ACTIONS or "ALL" in ACTIONS:
+    if "FW" in ACTIONS:
         print("Configure firewall...")
         sedvalue("{PUBLIC_IP}", CONF_INTERFACES["NETWORK_IP"], "/etc/init.d/firewall")
+        sedvalue("{PORT_NUMBER}", PORT_SSH_NUMBER, "/etc/init.d/firewall")
         print("Apply Firewall")
         run("bash /etc/init.d/firewall")
 
     # Update port ssh
-    if "SSH" in ACTIONS or "ALL" in ACTIONS:
+    if "SSH" in ACTIONS:
         print("Change ssh port...")
         sedvalue("{PORT_NUMBER}", PORT_SSH_NUMBER, "/etc/ssh/sshd_config")
-        print("update firewall...")
-        sedvalue("{PORT_NUMBER}", PORT_SSH_NUMBER, "/etc/init.d/firewall")
         print("Restart sshd service")
         service_gestion("sshd", "restart")
 
     """ Add user key """
-    if "USERS" in ACTIONS or "ALL" in ACTIONS:
+    if "USERS" in ACTIONS:
         for USER in USERS:
-            confuser(USER)
+            confuser(CONF_ROOT, ACTIONS, USER)
 
     """ Install packages """
     SERVER_ROLES = ['base', 'additionnal']
@@ -176,11 +175,11 @@ def deploy_base_lamp():
     install_packages(CONF_FILE, SERVER_ROLES)
 
     """ SSHguard configuration """
-    if "SSH" in ACTIONS or "ALL" in ACTIONS:
+    if "SSH" in ACTIONS:
         sshguard(SSHGUARD_WL_IP)
 
     """  Configure postfix """
-    if "SMTP" in ACTIONS or "ALL" in ACTIONS:
+    if "SMTP" in ACTIONS:
         files_list = [
             ['/conf/POSTFIX/main.cf', '/etc/postfix/main.cf', '0640'],
         ]
@@ -211,18 +210,21 @@ def deploy_base_lamp():
             ['/conf/LOGROTATE/apache2.conf', '/etc/logrotate.d/apache2', '0640'],
             ['/conf/RSYSLOG/apache2.conf', '/etc/rsyslog.d/10-apache.conf', '0640']
         ]
-        files_list.extend(LOGFILES)
+        for LOGFILE in LOGFILES:
+            files_list.append(LOGFILE)
 
     if "LAMP_BASE" in ACTIONS:
-        files_list.extend(['/conf/PHP/7.0/php.ini', '/etc/php/7.0/apache2/php.ini', '0640'])
+        apache_modactivation(["headers"])
+        files_list.append(['/conf/PHP/7.0/php.ini', '/etc/php/7.0/apache2/php.ini', '0640'])
+    elif "LAMP_ADVANCED" in ACTIONS:
+        apache_modactivation(["headers", "remoteip"])
 
     copyfiles(CONF_ROOT, files_list)
     sedvalue("{servername}", HOSTNAME, "/etc/apache2/apache2.conf")
-    apache_modactivation(["headers"])
     apache_confactivation(["security.conf", "badbot.conf"])
 
     """ Configure apache vhosts """
-    if "VHOSTS" in ACTIONS or "ALL" in ACTIONS:
+    if "VHOSTS" in ACTIONS:
         print("configure vhost...")
         for VHOST in VHOSTS:
             run('mkdir -p /var/www/{servername}/prod/'.format(servername=VHOST["SERVER_NAME"]))
@@ -272,7 +274,7 @@ def deploy_base_lamp():
         mysql_base("create", db)
         mysql_user("create", db)
 
-    if "NETWORK" in ACTIONS or "ALL" in ACTIONS:
+    if "NETWORK" in ACTIONS:
         changeinterface(CONF_ROOT, CONF_INTERFACES)
 
 
@@ -374,7 +376,7 @@ def dynmotd(CONF_ROOT):
     copyfiles(CONF_ROOT, files_list)
 
 
-def confuser(user):
+def confuser(CONF_ROOT, ACTIONS, user):
     # Create the new admin user (default group=username); add to admin group
     run('getent passwd {username}  || adduser {username} --disabled-password --gecos ""'.format(
         username=user["USER"]))
@@ -388,10 +390,16 @@ def confuser(user):
     run("echo '' > /home/{username}/.ssh/authorized_keys".format(username=user["USER"]))
     for key in user["KEY"]:
         run("echo {keyv} >> /home/{username}/.ssh/authorized_keys".format(keyv=key, username=user["USER"]))
-        run("chown {username}: -R /home/{username}/.ssh/".format(username=user["USER"]))
         run("chmod 600 -R /home/{username}/.ssh/authorized_keys".format(username=user["USER"]))
-    return
 
+    if "USERBASHRC" in ACTIONS:
+        files_list = [
+            ['/conf/SYSTEM/bashrc', '/home/{username}/.bashrc'.format(username=user["USER"]), '0640'],
+            ['/conf/SYSTEM/bash_profile', '/home/{username}/.bash_profile'.format(username=user["USER"]), '0640']
+        ]
+        copyfiles(CONF_ROOT, files_list)
+
+    run("chown {username}: -R /home/{username}/".format(username=user["USER"]))
 
 def changehostname(hostname):
     run("echo {0}> /etc/hostname".format(hostname))
