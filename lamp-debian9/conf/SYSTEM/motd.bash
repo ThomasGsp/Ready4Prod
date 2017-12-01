@@ -28,7 +28,8 @@ MEMORY=$(echo $(free -m |grep Mem: | awk -F " " '{print $2}') MO)
 # Memory Used
 MEMORY_USED=$(echo $(free -m |grep Mem: | awk -F " " '{print $3}') MO)
 # User home
-HOMEDIR=$( getent passwd "$USER" | cut -d: -f6 )
+USERL=$(whoami)
+HOMEDIR=$(getent passwd "$USERL" | cut -d: -f6 )
 
 echo -e "
 ################################ ALERT! ###################################
@@ -54,7 +55,7 @@ echo -e "
 \033[1;31m+ \033[0;37mMemory Used \033[1;31m= \033[1;32m$MEMORY_USED
 \033[1;31m+++++++++++++++++: \033[0;37mUser Data\033[1;31m :+++++++++++++++++++++
 + \033[0;37mUsername \033[1;31m= \033[1;32m`whoami`
-\033[1;31m+ \033[0;37m User home dir \033[1;31m= \033[1;32m$HOMEDIR
+\033[1;31m+ \033[0;37mUser home dir \033[1;31m= \033[1;32m$HOMEDIR
 \033[1;31m+++++++++++++++++: \033[0;37mInformation/Role\033[1;31m :++++++++++++++
 \033[1;31m+ \033[0;37mServer \033[1;31m= \033[1;32m- LAMP Server
 \033[1;31m+++++++++++++++++++++++++++++++++++++++++++++++++++\033[0m"
