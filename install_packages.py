@@ -318,13 +318,14 @@ def deploy_base_lamp():
 
         """ Hitch configuration """
 
-        run('mkdir /etc/hitch/defaultssl/')
+        run('mkdir -p /etc/hitch/defaultssl/')
         files_list = [
             ['/conf/HITCH/hitch.conf', '/etc/hitch/hitch.conf', '0640'],
             ['/data/ssl/default.pem', '/etc/hitch/defaultssl/default.pem', '0640']
         ]
         copyfiles(CONF_ROOT, files_list)
 
+        run('chown _hitch:_hitch -R /etc/_hitch/')
         # Generate default ssl certificate
         service_gestion("hitch", "restart")
 
