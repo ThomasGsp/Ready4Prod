@@ -1,0 +1,1 @@
+30 2 * * * root /usr/bin/certbot renew --renew-hook "/usr/local/bin/certbot_renew.sh" >> /var/log/le-renewal.log
