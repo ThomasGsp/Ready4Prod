@@ -34,12 +34,12 @@ def deploy_base_lamp():
         "MOTD", "FW",
         "VIM", "SSH",
         "SMTP", "LOGS",
-        "USERS"
+        "USERS", "VHOSTS"
     ]
 
     # LAMP_BASE (Apache, mariadb, phpmod)  OR
     # LAMP_AVANCED (Apache, mariadb, php-fpm, ssl, varnish) // not avalaible
-    LAMP = ["LAMP_BASE"]
+    LAMP = ["LAMP_ADVANCED"]
 
 
     # Vhost apache2.4 configuration
@@ -49,16 +49,11 @@ def deploy_base_lamp():
                 "SERVER_NAME": "sitedemo.com",
                 "SERVER_NAME_ALIAS": ["www.sitedemo.com", "www.sitedemo.fr"],
                 "FILES": "/data/sitedemo.com/index.html",
-                "HTTPCACHE": False,
-                "SSL": False
             },
             {
                 "SERVER_NAME": "sitedemo1.com",
                 "SERVER_NAME_ALIAS": ["www.sitedemo1.com", "www.sitedemo1.fr"],
-                "FILES": "/data/sitedemo1.com/startbootstrap-resume-gh-pages.zip",
-                "HTTPCACHE": False,
-                "SSL": False
-
+                "FILES": "/data/sitedemo1.com/startbootstrap-resume-gh-pages.zip"
             }
         ]
 
@@ -71,8 +66,8 @@ def deploy_base_lamp():
     # SSH PORT
     PORT_SSH_NUMBER = "22"
 
-    # SSHGUARD ip white list
-    SSHGUARD_WL_IP = ["192.168.1.1", "172.16.10.5"]
+    # GENERAL WHITELIST IP (SSH, FIREWALL, SOFT...)
+    WHITELITSTIPS = ["192.168.1.1", "172.16.10.5", "127.0.0.1"]
 
     # NETWORK configuration
     CONF_INTERFACES = {}
@@ -114,8 +109,11 @@ def deploy_base_lamp():
     CONF_FILE = ""
     if "LAMP_ADVANCED" in ACTIONS:
         CONF_FILE = CONF_ROOT+"/debian9_lamp_advanced.ini"
-    elif "LAMP_BASE" in ACTIONS:
+        FILEDIR = "ADVANCED"
+    else:
         CONF_FILE = CONF_ROOT+"/debian9_lamp_basic.ini"
+        FILEDIR = "BASE"
+
 
     if "UPGRADE" in ACTIONS: upgrade()
     if "HOSTNAME" in ACTIONS: changehostname(HOSTNAME)
@@ -132,6 +130,7 @@ def deploy_base_lamp():
         ['/conf/SYSTEM/cpb.bash', '/usr/local/bin/cpb', '0755'],
         ['/conf/SYSTEM/bash_profile', '/root/.bash_profile', '0640'],
     ]
+
     if "USERBASHRC" in ACTIONS: files_list.append(
         ['/conf/SYSTEM/bashrc', '/root/.bashrc', '0640'])
     if "SSH" in ACTIONS: files_list.append(
@@ -170,7 +169,7 @@ def deploy_base_lamp():
 
     """ SSHguard configuration """
     if "SSH" in ACTIONS:
-        sshguard(SSHGUARD_WL_IP)
+        sshguard(WHITELITSTIPS)
 
     """  Configure postfix """
     if "SMTP" in ACTIONS:
@@ -182,9 +181,11 @@ def deploy_base_lamp():
         service_gestion("postfix", "restart")
 
     """ Install lamp """
+    APACHELISTEN = "0.0.0.0:80"
     if "LAMP_BASE" in ACTIONS:
         SERVER_ROLES = ['http', 'php', 'cache', 'database']
     elif "LAMP_ADVANCED" in ACTIONS:
+        APACHELISTEN = "127.0.0.1:8080"
         SERVER_ROLES = ['http', 'php', 'cache', 'database', 'ssl']
 
     env.roledefs = dict.fromkeys(SERVER_ROLES, [])
@@ -210,11 +211,13 @@ def deploy_base_lamp():
     if "LAMP_BASE" in ACTIONS:
         apache_modactivation(["headers"])
         files_list.append(['/conf/PHP/7.0/php.ini', '/etc/php/7.0/apache2/php.ini', '0640'])
-    elif "LAMP_ADVANCED" in ACTIONS:
-        apache_modactivation(["headers", "remoteip"])
 
     copyfiles(CONF_ROOT, files_list)
+
     sedvalue("{servername}", HOSTNAME, "/etc/apache2/apache2.conf")
+    sedvalue("{APACHE_LISTEN}", APACHELISTEN, "/etc/apache2/ports.conf")
+    sedvalue("{APACHE_LISTEN}", APACHELISTEN, "/etc/apache2/sites-available/000-default.conf")
+
     apache_confactivation(["security.conf", "badbot.conf"])
 
     """ Configure apache vhosts """
@@ -227,7 +230,7 @@ def deploy_base_lamp():
             filename, file_extension = os.path.splitext(CONF_ROOT + VHOST["FILES"])
 
             copyfiles(CONF_ROOT, [
-                ['/conf/APACHE/2.4/sites-available/010-mywebsite.com.conf', '/etc/apache2/sites-available/010.{servername}.conf'
+                ['/conf/APACHE/2.4/sites-available/{filedir}/010-mywebsite.com.conf'.format(filedir=FILEDIR), '/etc/apache2/sites-available/010.{servername}.conf'
                       .format(servername=VHOST["SERVER_NAME"]), '0640'],
                 ['{files}'.format(files=VHOST["FILES"]), '/var/www/{servername}/prod/site_tmp{fileexten}'
                       .format(servername=VHOST["SERVER_NAME"], fileexten=file_extension), '0640']
@@ -235,6 +238,9 @@ def deploy_base_lamp():
             sedvalue("{domain_name}", VHOST["SERVER_NAME"], "/etc/apache2/sites-available/010.{servername}.conf"
                      .format(servername=VHOST["SERVER_NAME"]))
             sedvalue("{domain_name_alias}", ''.join(VHOST["SERVER_NAME_ALIAS"]), "/etc/apache2/sites-available/010.{servername}.conf"
+                     .format(servername=VHOST["SERVER_NAME"]))
+
+            sedvalue("{APACHE_LISTEN}", APACHELISTEN, "/etc/apache2/sites-available/010.{servername}.conf"
                      .format(servername=VHOST["SERVER_NAME"]))
 
             if VHOST["FILES"]:
@@ -265,20 +271,70 @@ def deploy_base_lamp():
         mysql_base("create", db)
         mysql_user("create", db)
 
-    if "NETWORK" in ACTIONS:
-        changeinterface(CONF_ROOT, CONF_INTERFACES)
-
-
     """ SPECIFICS TASK FOR ADVANCED """
     if "LAMP_ADVANCED" in ACTIONS:
-        # Install varnish & configure
-        # Install lestencrypt & configure
-        # Install hitch & configure
-        # Configure php-fpm (pools)
-        # Configure apache2 (mod_fastcgi.c)
-        pass
+        """ Configure VARNISH """
+        files_list = [
+            ['/conf/VARNISH/includes/acls.vcl', '/etc/varnish/includes/acls.vcl', '0640'],
+            ['/conf/VARNISH/includes/backends.vcl', '/etc/varnish/includes/backends.vcl', '0640'],
+            ['/conf/VARNISH/includes/directors.vcl', '/etc/varnish/includes/directors.vcl', '0640'],
+            ['/conf/VARNISH/includes/probes.vcl', '/etc/varnish/includes/probes.vcl', '0640'],
+            ['/conf/VARNISH/production.vcl', '/etc/varnish/production.vcl', '0640'],
+            ['/conf/VARNISH/varnish', '/etc/default/varnish', '0640'],
+            ['/conf/VARNISH/varnish.service', '/lib/systemd/system/varnish.service', '0640'],
+        ]
 
+        if "LOGS" in ACTIONS:
+            LOGFILES = [
+                ['/conf/LOGROTATE/varnish.conf', '/etc/logrotate.d/varnish', '0640']
+            ]
+            for LOGFILE in LOGFILES:
+                files_list.append(LOGFILE)
+
+        run('mkdir -p /etc/varnish/includes/')
+        copyfiles(CONF_ROOT, files_list)
+
+        run('rm /etc/varnish/default.vcl')
+        run('ln -sf /etc/varnish/production.vcl /etc/varnish/default.vcl')
+        run('chown varnish:varnish -R /etc/varnish/')
+        run('systemctl daemon-reload')
+        service_gestion("varnish", "restart")
+
+        """ Configure letsencrypt """
+        files_list = [
+            ['/conf/LETSENCRYPT/cron_certbot', '/etc/cron.d/certbot', '0640'],
+            ['/conf/LETSENCRYPT/certbot_renew.sh', '/usr/local/bin/certbot_renew.sh', '0750'],
+            ['/conf/LETSENCRYPT/certbot_create.sh', '/usr/local/bin/certbot_create.sh', '0750'],
+        ]
+        copyfiles(CONF_ROOT, files_list)
+
+
+        """ Configure php-fpm (pools) """
+        files_list = [
+            ['/conf/PHP/FPM/www.conf', '/etc/php/7.0/fpm/pool.d/www.conf', '0640']
+        ]
+        copyfiles(CONF_ROOT, files_list)
+        service_gestion("php7.0-fpm", "restart")
+
+        """ Hitch configuration """
+
+        run('mkdir /etc/hitch/defaultssl/')
+        files_list = [
+            ['/conf/HITCH/hitch.conf', '/etc/hitch/hitch.conf', '0640'],
+            ['/data/ssl/default.pem', '/etc/hitch/defaultssl/default.pem', '0640']
+        ]
+        copyfiles(CONF_ROOT, files_list)
+
+        # Generate default ssl certificate
+        service_gestion("hitch", "restart")
+
+
+    if "NETWORK" in ACTIONS:
+        changeinterface(CONF_ROOT, CONF_INTERFACES)
 # ------------------------------------------ #
+
+# VARNISH #
+
 
 #  MYSQL  #
 def mysql_iniconf():
@@ -316,8 +372,10 @@ def copyfiles(conf_root, files_list):
         except BaseException as e:
             print(e)
 
+
 def service_gestion(service, action):
     run("systemctl {actiontype} {servicename}".format(actiontype=action, servicename=service))
+
 
 #  APACHE  #
 def apache_modactivation(modslist):
@@ -339,6 +397,7 @@ def apache_siteactivation(sitelist):
 def upgrade():
     run("apt-get update")
     run("apt-get upgrade -y")
+
 
 def changedns(ips):
     run("echo > /etc/resolv.conf")
@@ -401,6 +460,7 @@ def confuser(CONF_ROOT, ACTIONS, user):
 
     run("chown {username}: -R /home/{username}/".format(username=user["USER"]))
 
+
 def changehostname(hostname):
     run("echo {0}> /etc/hostname".format(hostname))
     print("To apply change, you must reboot")
@@ -459,3 +519,4 @@ def install_packages(conf_root, roles):
         for package in config.get(role, 'packages').split(' '):
             print('Install {0}'.format(package))
             run("apt-get install -y {0}".format(package))
+
