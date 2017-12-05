@@ -60,13 +60,13 @@ def deploy_base_lamp():
     """
 
     # SELECT YOU VM TYPE (SMALL_VM,  STANDARD_VM, STRONG_VM)
-    # VM_TYPE = STANDARD_VM # CURRENTLY NOT IMPLEMENTED
+    VM_TYPE = STANDARD_VM # CURRENTLY NOT IMPLEMENTED
 
     # Composants list:
     # You have the possibility to select specifics composants
     # UPGRADE, HOSTNAME, SSHHOSTKEY, DNS, USERBASHRC,
     # NETWORK, MOTD ,FW ( Firewall), VIM (Vim configuration)
-    # SSH (sshd + sshguard), SMTP (postfix conf), LOGS, VHOSTS, USERS
+    # SSH (sshd + sshguard), SMTP (postfix conf), LOGS, USERS
     # MUST BE A LIST
 
     BASE = [
@@ -76,7 +76,7 @@ def deploy_base_lamp():
         "MOTD", "FW",
         "VIM", "SSH",
         "SMTP", "LOGS",
-        "USERS", "VHOSTS"
+        "USERS"
     ]
 
     # Select lamp type (or keep empty for none installation)
@@ -84,6 +84,12 @@ def deploy_base_lamp():
     # LAMP_AVANCED (Apache, mariadb, php-fpm, ssl, varnish)
     # MUST BE A LIST
     LAMP = ["LAMP_ADVANCED"]
+
+    SOFT = [
+        "VHOSTS", "VARNISH",
+        "APACHE", "PHP",
+        "HITCH", "SSL"
+    ]
 
 
     # VHOSTS configuration
@@ -160,6 +166,8 @@ def deploy_base_lamp():
     """
     ACTIONS.extend(BASE)
     ACTIONS.extend(LAMP)
+    ACTIONS.extend(SOFT)
+
     CONF_FILE = ""
     if "LAMP_ADVANCED" in ACTIONS:
         CONF_FILE = CONF_ROOT+"/debian9_lamp_advanced.ini"
@@ -246,10 +254,16 @@ def deploy_base_lamp():
         for LOGFILE in LOGFILES:
             files_list.append(LOGFILE)
 
-    if "LAMP_BASE" in ACTIONS:
-        files_list.append(['/conf/PHP/7.0/php.ini', '/etc/php/7.0/apache2/php.ini', '0640'])
+    if "APACHE" in ACTIONS:
         copyfiles(CONF_ROOT, files_list)
         confapache(HOSTNAME, APACHELISTEN)
+
+    """ Configure php for apache """
+    if "LAMP_BASE" in ACTIONS and "PHP" in ACTIONS:
+        copyfiles(CONF_ROOT, [
+            ['/conf/PHP/7.0/php.ini', '/etc/php/7.0/apache2/php.ini', '0640']
+        ])
+        confphp(VM_TYPE)
 
     """ Configure apache vhosts """
     if "VHOSTS" in ACTIONS:
@@ -282,33 +296,38 @@ def deploy_base_lamp():
             for LOGFILE in LOGFILES:
                 files_list.append(LOGFILE)
 
-        run('mkdir -p /etc/varnish/includes/')
-        copyfiles(CONF_ROOT, files_list)
-        confvarnish()
+        if "VARNISH" in ACTIONS:
+            run('mkdir -p /etc/varnish/includes/')
+            copyfiles(CONF_ROOT, files_list)
+            confvarnish(VM_TYPE)
 
-        """ Configure letsencrypt """
-        files_list = [
-            ['/conf/LETSENCRYPT/certbot_cron', '/etc/cron.d/certbot', '0640'],
-            ['/conf/LETSENCRYPT/certbot_renew.sh', '/usr/local/bin/certbot_renew.sh', '0750'],
-            ['/conf/LETSENCRYPT/certbot_create.sh', '/usr/local/bin/certbot_create.sh', '0750'],
-        ]
-        copyfiles(CONF_ROOT, files_list)
+        if "SSL" in ACTIONS:
+            """ Configure letsencrypt """
+            files_list = [
+                ['/conf/LETSENCRYPT/certbot_cron', '/etc/cron.d/certbot', '0640'],
+                ['/conf/LETSENCRYPT/certbot_renew.sh', '/usr/local/bin/certbot_renew.sh', '0750'],
+                ['/conf/LETSENCRYPT/certbot_create.sh', '/usr/local/bin/certbot_create.sh', '0750'],
+            ]
+            copyfiles(CONF_ROOT, files_list)
 
-        """ Configure php-fpm (pools) """
-        files_list = [
-            ['/conf/PHP/FPM/www.conf', '/etc/php/7.0/fpm/pool.d/www.conf', '0640']
-        ]
-        copyfiles(CONF_ROOT, files_list)
-        confphpfpm()
+        if "PHP" in ACTIONS:
+            """ Configure php-fpm (pools) """
+            files_list = [
+                ['/conf/PHP/FPM/www.conf', '/etc/php/7.0/fpm/pool.d/www.conf', '0640'],
+                ['/conf/PHP/7.0/php.ini', '/etc/php/7.0/fpm/php.ini', '0640']
+            ]
+            copyfiles(CONF_ROOT, files_list)
+            confphpfpm(VM_TYPE)
 
-        """ Hitch configuration """
-        run('mkdir -p /etc/hitch/defaultssl/')
-        files_list = [
-            ['/conf/HITCH/hitch.conf', '/etc/hitch/hitch.conf', '0640'],
-            ['/data/ssl/default.pem', '/etc/hitch/defaultssl/default.pem', '0640']
-        ]
-        copyfiles(CONF_ROOT, files_list)
-        confhitch()
+        if "HITCH" in ACTIONS:
+            """ Hitch configuration """
+            run('mkdir -p /etc/hitch/defaultssl/')
+            files_list = [
+                ['/conf/HITCH/hitch.conf', '/etc/hitch/hitch.conf', '0640'],
+                ['/data/ssl/default.pem', '/etc/hitch/defaultssl/default.pem', '0640']
+            ]
+            copyfiles(CONF_ROOT, files_list)
+            confhitch(VM_TYPE)
 
     if "NETWORK" in ACTIONS:
         changeinterface(CONF_ROOT, CONF_INTERFACES)
@@ -434,6 +453,13 @@ def confapache(HOSTNAME, APACHELISTEN):
     service_gestion("apache2", "restart")
 
 
+def confphp(VM_TYPE):
+    ramalloc = int(VM_TYPE['RAM'] / 8)
+    sedvalue("{RAMALLOC}", ramalloc, "/etc/php/7.0/apache2/php.ini")
+    Logger.writelog("[OK] configure php for apache2")
+    service_gestion("apache2", "restart")
+
+
 def apache_modactivation(modslist):
     for mod in modslist:
         try:
@@ -536,11 +562,13 @@ def confvhosts(CONF_ROOT, FILEDIR, APACHELISTEN, VHOST):
             exit(1)
 
 
-def confvarnish():
+def confvarnish(VM_TYPE):
     try:
+        ramalloc = int(VM_TYPE['RAM'] / 4)
         run('rm /etc/varnish/default.vcl')
         Logger.writelog("[OK] Clean old varnish configuration")
         run('ln -sf /etc/varnish/production.vcl /etc/varnish/default.vcl')
+        sedvalue("{RAMALLOC}", ramalloc, "/etc/default/varnish")
         Logger.writelog("[OK] Link new varnish configuration")
         run('chown varnish:varnish -R /etc/varnish/')
         Logger.writelog("[OK] Apply rights on varnish configuration")
@@ -554,12 +582,16 @@ def confvarnish():
             print("Error found: {error}".format(error=e))
             exit(1)
 
-def confphpfpm():
+def confphpfpm(VM_TYPE):
+    ramalloc = int(VM_TYPE['RAM'] / 8)
+    sedvalue("{RAMALLOC}", ramalloc, "/etc/php/7.0/fpm/php.ini")
     service_gestion("php7.0-fpm", "restart")
 
 
-def confhitch():
+def confhitch(VM_TYPE):
     try:
+        cpualloc = int(VM_TYPE['CPU'] / 2) + (VM_TYPE['CPU'] % 2 > 0)
+        sedvalue("{CPUALLOC}", cpualloc, "/etc/default/varnish")
         run('chown _hitch:_hitch -R /etc/hitch/')
         Logger.writelog("[OK] Hitch configurations are applied")
     except BaseException as e:
@@ -701,6 +733,7 @@ def changehostname(hostname):
             print("Error found: {error}".format(error=e))
             exit(1)
 
+
 def changehostsfile(hostname, ip):
     try:
         run("echo > /etc/hosts")
@@ -773,6 +806,8 @@ def install_packages(conf_root, roles):
                 if exiterror:
                     print("Error found: {error}".format(error=e))
                     exit(1)
+
+
 class Logs:
     def __init__(self, logfiledir):
         self.logfiles = logfiledir
@@ -783,3 +818,5 @@ class Logs:
 
     def closefile(self):
         self.file.close()
+
+
