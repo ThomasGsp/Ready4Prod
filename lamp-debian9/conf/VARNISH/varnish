@@ -6,7 +6,7 @@ DAEMON_OPTS="-a 0.0.0.0:80 \
         -f /etc/varnish/production.vcl \
         -T 127.0.0.1:6082 \
         -S /etc/varnish/secret \
-        -s default=malloc, {RAMALLOC}mb \
+        -s default=malloc,{RAMALLOC}mb \
         -p thread_pool_min=200 \
         -p thread_pool_max=4000 \
         -p thread_pool_timeout=300 \

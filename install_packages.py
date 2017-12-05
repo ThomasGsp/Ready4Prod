@@ -36,32 +36,16 @@ def deploy_base_lamp():
 
     # SYSTEM INFORMATION
     # THIS VALUE ARE USED IN CALCUL TO SET THE AUTOMATICS PARAMETERS IN THE SOFTWARES
-    # CHANGES WITHOUT KNOW CAN DEGRADE SYSTEMS PERFORMANCES
-    SMALL_VM = {
-        "CPU": 1,
-        "RAM": 2048
-    }
-
-    STANDARD_VM = {
-        "CPU": 2,
-        "RAM": 4048
-    }
-
-    STRONG_VM = {
+    VM_C = {
         "CPU": 4,
         "RAM": 8096
     }
-
 
     """ 
     **********************
     * Configuration Zone *
     **********************
     """
-
-    # SELECT YOU VM TYPE (SMALL_VM,  STANDARD_VM, STRONG_VM)
-    VM_TYPE = STANDARD_VM # CURRENTLY NOT IMPLEMENTED
-
     # Composants list:
     # You have the possibility to select specifics composants
     # UPGRADE, HOSTNAME, SSHHOSTKEY, DNS, USERBASHRC,
@@ -263,7 +247,7 @@ def deploy_base_lamp():
         copyfiles(CONF_ROOT, [
             ['/conf/PHP/7.0/php.ini', '/etc/php/7.0/apache2/php.ini', '0640']
         ])
-        confphp(VM_TYPE)
+        confphp(VM_C)
 
     """ Configure apache vhosts """
     if "VHOSTS" in ACTIONS:
@@ -299,7 +283,7 @@ def deploy_base_lamp():
         if "VARNISH" in ACTIONS:
             run('mkdir -p /etc/varnish/includes/')
             copyfiles(CONF_ROOT, files_list)
-            confvarnish(VM_TYPE)
+            confvarnish(VM_C)
 
         if "SSL" in ACTIONS:
             """ Configure letsencrypt """
@@ -317,7 +301,7 @@ def deploy_base_lamp():
                 ['/conf/PHP/7.0/php.ini', '/etc/php/7.0/fpm/php.ini', '0640']
             ]
             copyfiles(CONF_ROOT, files_list)
-            confphpfpm(VM_TYPE)
+            confphpfpm(VM_C)
 
         if "HITCH" in ACTIONS:
             """ Hitch configuration """
@@ -327,7 +311,7 @@ def deploy_base_lamp():
                 ['/data/ssl/default.pem', '/etc/hitch/defaultssl/default.pem', '0640']
             ]
             copyfiles(CONF_ROOT, files_list)
-            confhitch(VM_TYPE)
+            confhitch(VM_C)
 
     if "NETWORK" in ACTIONS:
         changeinterface(CONF_ROOT, CONF_INTERFACES)
@@ -453,8 +437,10 @@ def confapache(HOSTNAME, APACHELISTEN):
     service_gestion("apache2", "restart")
 
 
-def confphp(VM_TYPE):
-    ramalloc = int(VM_TYPE['RAM'] / 8)
+def confphp(VM_C):
+    ramalloc = int(VM_C['RAM'] / 8)
+    if ramalloc > 256:
+        ramalloc = 256
     sedvalue("{RAMALLOC}", ramalloc, "/etc/php/7.0/apache2/php.ini")
     Logger.writelog("[OK] configure php for apache2")
     service_gestion("apache2", "restart")
@@ -546,6 +532,7 @@ def confvhosts(CONF_ROOT, FILEDIR, APACHELISTEN, VHOST):
             elif file_extension == ".tar.bz2":
                 run("tar -xjvf  {0} {1}".format(sitefile, sitedir))
                 run("rm {0}".format(sitefile))
+            # Finir ici les fichiers directs
 
         run('chown 33:33 -R /var/www/{servername}'.format(servername=VHOST["SERVER_NAME"]))
         run('find /var/www/{servername} -type d -exec chmod 750 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
@@ -562,9 +549,9 @@ def confvhosts(CONF_ROOT, FILEDIR, APACHELISTEN, VHOST):
             exit(1)
 
 
-def confvarnish(VM_TYPE):
+def confvarnish(VM_C):
     try:
-        ramalloc = int(VM_TYPE['RAM'] / 4)
+        ramalloc = int(VM_C['RAM'] / 4)
         run('rm /etc/varnish/default.vcl')
         Logger.writelog("[OK] Clean old varnish configuration")
         run('ln -sf /etc/varnish/production.vcl /etc/varnish/default.vcl')
@@ -582,15 +569,17 @@ def confvarnish(VM_TYPE):
             print("Error found: {error}".format(error=e))
             exit(1)
 
-def confphpfpm(VM_TYPE):
-    ramalloc = int(VM_TYPE['RAM'] / 8)
+def confphpfpm(VM_C):
+    ramalloc = int(VM_C['RAM'] / 8)
+    if ramalloc > 256:
+        ramalloc = 256
     sedvalue("{RAMALLOC}", ramalloc, "/etc/php/7.0/fpm/php.ini")
     service_gestion("php7.0-fpm", "restart")
 
 
-def confhitch(VM_TYPE):
+def confhitch(VM_C):
     try:
-        cpualloc = int(VM_TYPE['CPU'] / 2) + (VM_TYPE['CPU'] % 2 > 0)
+        cpualloc = int(VM_C['CPU'] / 2) + (VM_C['CPU'] % 2 > 0)
         sedvalue("{CPUALLOC}", cpualloc, "/etc/default/varnish")
         run('chown _hitch:_hitch -R /etc/hitch/')
         Logger.writelog("[OK] Hitch configurations are applied")
