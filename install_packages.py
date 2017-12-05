@@ -6,11 +6,12 @@ import os
 from fabric.api import *
 import datetime
 
+# Global var
+global Logger, exiterror
+
 
 def deploy_base_lamp():
-    # Global var
     global Logger, exiterror
-
     """ 
     **********************
     * Configuration R4P  *
@@ -28,6 +29,7 @@ def deploy_base_lamp():
 
     # Log output
     logfile = "/tmp/logsinstallr4p"
+    Logger = Logs(logfile)
 
     # Exit ON error (stop program on error)
     exiterror = False
@@ -156,8 +158,6 @@ def deploy_base_lamp():
     * Proccess *
     ************
     """
-    Logger = Logs(logfile)
-
     ACTIONS.extend(BASE)
     ACTIONS.extend(LAMP)
     CONF_FILE = ""
@@ -312,6 +312,13 @@ def deploy_base_lamp():
 
     if "NETWORK" in ACTIONS:
         changeinterface(CONF_ROOT, CONF_INTERFACES)
+
+    # END
+    Logger.closefile()
+    with open(logfile, 'r') as searchfile:
+        for line in searchfile:
+            if '[ERROR]' in line or '[INFO]' in line:
+                print(line)
 # ------------------------------------------ #
 
 #  MYSQL  #
@@ -417,8 +424,11 @@ def service_gestion(service, action):
 def confapache(HOSTNAME, APACHELISTEN):
     # No try necessary here
     sedvalue("{servername}", HOSTNAME, "/etc/apache2/apache2.conf")
+    Logger.writelog("[OK] Set hostname in apache configuration")
     sedvalue("{APACHE_LISTEN}", APACHELISTEN, "/etc/apache2/ports.conf")
+    Logger.writelog("[OK] Set ports in apache configuration")
     sedvalue("{APACHE_LISTEN}", APACHELISTEN, "/etc/apache2/sites-available/000-default.conf")
+    Logger.writelog("[OK] Set interface in apache default")
     apache_confactivation(["security.conf", "badbot.conf"])
     apache_modactivation(["headers"])
     service_gestion("apache2", "restart")
@@ -470,66 +480,79 @@ def apache_siteactivation(sitelist):
 
 
 def confvhosts(CONF_ROOT, FILEDIR, APACHELISTEN, VHOST):
-    run('mkdir -p /var/www/{servername}/prod/'.format(servername=VHOST["SERVER_NAME"]))
-    run('mkdir -p /var/log/apache2/{servername}/'.format(servername=VHOST["SERVER_NAME"]))
+    try:
+        run('mkdir -p /var/www/{servername}/prod/'.format(servername=VHOST["SERVER_NAME"]))
+        Logger.writelog("[OK] Create file dir for new vhost {servername}").format(servername=VHOST["SERVER_NAME"])
+        run('mkdir -p /var/log/apache2/{servername}/'.format(servername=VHOST["SERVER_NAME"]))
+        Logger.writelog("[OK] Create logs dir for new vhost {servername}").format(servername=VHOST["SERVER_NAME"])
+        filename, file_extension = os.path.splitext(CONF_ROOT + VHOST["FILES"])
 
-    filename, file_extension = os.path.splitext(CONF_ROOT + VHOST["FILES"])
+        copyfiles(CONF_ROOT, [
+            ['/conf/APACHE/2.4/sites-available/{filedir}/010-mywebsite.com.conf'.format(filedir=FILEDIR),
+             '/etc/apache2/sites-available/010.{servername}.conf'
+                  .format(servername=VHOST["SERVER_NAME"]), '0640'],
+            ['{files}'.format(files=VHOST["FILES"]), '/var/www/{servername}/prod/site_tmp{fileexten}'
+                  .format(servername=VHOST["SERVER_NAME"], fileexten=file_extension), '0640']
+        ])
 
-    copyfiles(CONF_ROOT, [
-        ['/conf/APACHE/2.4/sites-available/{filedir}/010-mywebsite.com.conf'.format(filedir=FILEDIR),
-         '/etc/apache2/sites-available/010.{servername}.conf'
-              .format(servername=VHOST["SERVER_NAME"]), '0640'],
-        ['{files}'.format(files=VHOST["FILES"]), '/var/www/{servername}/prod/site_tmp{fileexten}'
-              .format(servername=VHOST["SERVER_NAME"], fileexten=file_extension), '0640']
-    ])
-    sedvalue("{domain_name}", VHOST["SERVER_NAME"], "/etc/apache2/sites-available/010.{servername}.conf"
-             .format(servername=VHOST["SERVER_NAME"]))
-    sedvalue("{domain_name_alias}", ''.join(VHOST["SERVER_NAME_ALIAS"]),
-             "/etc/apache2/sites-available/010.{servername}.conf"
-             .format(servername=VHOST["SERVER_NAME"]))
+        sedvalue("{domain_name}", VHOST["SERVER_NAME"], "/etc/apache2/sites-available/010.{servername}.conf"
+                 .format(servername=VHOST["SERVER_NAME"]))
+        sedvalue("{domain_name_alias}", ''.join(VHOST["SERVER_NAME_ALIAS"]),
+                 "/etc/apache2/sites-available/010.{servername}.conf"
+                 .format(servername=VHOST["SERVER_NAME"]))
+        sedvalue("{APACHE_LISTEN}", APACHELISTEN, "/etc/apache2/sites-available/010.{servername}.conf"
+                 .format(servername=VHOST["SERVER_NAME"]))
+        Logger.writelog("[OK] Push new vhost and files for {servername}").format(servername=VHOST["SERVER_NAME"])
 
-    sedvalue("{APACHE_LISTEN}", APACHELISTEN, "/etc/apache2/sites-available/010.{servername}.conf"
-             .format(servername=VHOST["SERVER_NAME"]))
+        if VHOST["FILES"]:
+            sitefile = "/var/www/{servername}/prod/site_tmp{fileexten}".format(servername=VHOST["SERVER_NAME"],
+                                                                               fileexten=file_extension)
+            sitedir = "/var/www/{servername}/prod/".format(servername=VHOST["SERVER_NAME"])
+            if file_extension == ".zip":
+                run("unzip {0} -d {1}".format(sitefile, sitedir))
+                run("rm {0}".format(sitefile))
+            elif file_extension == ".tar":
+                run("tar -xvf  {0} {1}".format(sitefile, sitedir))
+                run("rm {0}".format(sitefile))
+            elif file_extension == ".tar.gz":
+                run("tar -xzvf  {0} {1}".format(sitefile, sitedir))
+                run("rm {0}".format(sitefile))
+            elif file_extension == ".tar.bz2":
+                run("tar -xjvf  {0} {1}".format(sitefile, sitedir))
+                run("rm {0}".format(sitefile))
 
-    if VHOST["FILES"]:
-        sitefile = "/var/www/{servername}/prod/site_tmp{fileexten}".format(servername=VHOST["SERVER_NAME"],
-                                                                           fileexten=file_extension)
-        sitedir = "/var/www/{servername}/prod/".format(servername=VHOST["SERVER_NAME"])
-        if file_extension == ".zip":
-            run("unzip {0} -d {1}".format(sitefile, sitedir))
-            run("rm {0}".format(sitefile))
-        elif file_extension == ".tar":
-            run("tar -xvf  {0} {1}".format(sitefile, sitedir))
-            run("rm {0}".format(sitefile))
-        elif file_extension == ".tar.gz":
-            run("tar -xzvf  {0} {1}".format(sitefile, sitedir))
-            run("rm {0}".format(sitefile))
-        elif file_extension == ".tar.bz2":
-            run("tar -xjvf  {0} {1}".format(sitefile, sitedir))
-            run("rm {0}".format(sitefile))
+        run('chown 33:33 -R /var/www/{servername}'.format(servername=VHOST["SERVER_NAME"]))
+        run('find /var/www/{servername} -type d -exec chmod 750 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
+        run('find /var/www/{servername} -type f -exec chmod 640 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
+        Logger.writelog("[OK] Set chmod / chown for {servername}").format(servername=VHOST["SERVER_NAME"])
 
-    run('chown 33:33 -R /var/www/{servername}'.format(servername=VHOST["SERVER_NAME"]))
-    run('find /var/www/{servername} -type d -exec chmod 750 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
-    run('find /var/www/{servername} -type f -exec chmod 640 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
-    apache_siteactivation(["010.{servername}.conf".format(servername=VHOST["SERVER_NAME"])])
+        apache_siteactivation(["010.{servername}.conf".format(servername=VHOST["SERVER_NAME"])])
+        Logger.writelog("[OK] Active vhost {servername}").format(servername=VHOST["SERVER_NAME"])
+
+    except BaseException as e:
+        Logger.writelog("[ERROR] while apache vhost configuration ({error})".format(error=e))
+        if exiterror:
+            print("Error found: {error}".format(error=e))
+            exit(1)
 
 
 def confvarnish():
     try:
         run('rm /etc/varnish/default.vcl')
+        Logger.writelog("[OK] Clean old varnish configuration")
         run('ln -sf /etc/varnish/production.vcl /etc/varnish/default.vcl')
+        Logger.writelog("[OK] Link new varnish configuration")
         run('chown varnish:varnish -R /etc/varnish/')
-        # New systemd file settings
+        Logger.writelog("[OK] Apply rights on varnish configuration")
         run('systemctl daemon-reload')
+        Logger.writelog("[OK] Update systemd service")
         Logger.writelog("[OK] Varnish configurations are applied")
+        service_gestion("varnish", "restart")
     except BaseException as e:
         Logger.writelog("[ERROR] while varnish configuration ({error})".format(error=e))
         if exiterror:
             print("Error found: {error}".format(error=e))
             exit(1)
-
-    service_gestion("varnish", "restart")
-
 
 def confphpfpm():
     service_gestion("php7.0-fpm", "restart")
@@ -551,19 +574,22 @@ def confhitch():
 #  SYSTEM  #
 def upgrade():
     run("apt-get update")
+    Logger.writelog("[OK] update package database")
     run("apt-get upgrade -y")
+    Logger.writelog("[OK] VM upgraded")
 
 
 def changedns(ips):
     run("echo > /etc/resolv.conf")
+    Logger.writelog("[OK] FLush resolv dns file")
     for ip in ips:
         run("echo nameserver {dnsip} >> /etc/resolv.conf ".format(dnsip=ip))
+        Logger.writelog("[OK] IP {dnsip} added in resolv file".format(dnsip=ip))
 
 def changehostkey():
     try:
-        # Remove old ssh key...
         run("/bin/rm -v /etc/ssh/ssh_host_*")
-        # Generate new key...
+        Logger.writelog("[OK] Remove old ssh host key")
         run("dpkg-reconfigure openssh-server")
         Logger.writelog("[OK] host ssh key has been updated")
     except BaseException as e:
@@ -577,7 +603,9 @@ def changehostkey():
 
 def conffirewall(PORT_SSH_NUMBER, CONF_INTERFACES):
     sedvalue("{PUBLIC_IP}", CONF_INTERFACES["NETWORK_IP"], "/etc/init.d/firewall")
+    Logger.writelog("[OK] Set public IP in firewall file")
     sedvalue("{PORT_NUMBER}", PORT_SSH_NUMBER, "/etc/init.d/firewall")
+    Logger.writelog("[OK] Set ssh port in firewall file")
     try:
         run("bash /etc/init.d/firewall")
         Logger.writelog("[OK] Apply firewall file)")
@@ -589,31 +617,35 @@ def conffirewall(PORT_SSH_NUMBER, CONF_INTERFACES):
 
 
 def confssh(PORT_SSH_NUMBER):
-    print("Change ssh port...")
     sedvalue("{PORT_NUMBER}", PORT_SSH_NUMBER, "/etc/ssh/sshd_config")
-    print("Restart sshd service")
+    Logger.writelog("[OK] Change ssh port")
     service_gestion("sshd", "restart")
 
 def sshguard(ips):
     run("echo > /etc/sshguard/whitelist")
+    Logger.writelog("[OK] Flush whitelist sshguard")
     for ip in ips:
         run("echo {sshguardip} >> /etc/sshguard/whitelist ".format(sshguardip=ip))
+        Logger.writelog("[OK] New ip added in the sshguard whitelist: {sshguardip} ".format(sshguardip=ip))
     service_gestion("sshguard.service", "restart")
 
 
 def confpostfix(HOSTNAME):
     # No try necessary here
     sedvalue("{servername}", HOSTNAME, "/etc/postfix/main.cf")
+    Logger.writelog("[OK] Set hostname in postfix file")
     service_gestion("postfix", "restart")
 
 
 def dynmotd():
     try:
         run('if [ ! -d "/etc/update-motd.d/" ];then mkdir /etc/update-motd.d; chmod +x /etc/update-motd.d; fi')
+        Logger.writelog("[OK] Prepare motd file dir")
         run('rm -f /etc/motd')
         run('rm -f /etc/update-motd.d/*')
+        Logger.writelog("[OK] Clean motd existants files")
         run('ln -sf /var/run/motd.dynamic.new /etc/motd')
-        Logger.writelog("[OK] Set new motd )")
+        Logger.writelog("[OK] Set new motd")
         Logger.writelog("[INFO] You can view this new motd at the new ssh connection")
     except BaseException as e:
         Logger.writelog("[ERROR] while motd setting ({error})".format(error=e))
@@ -623,29 +655,48 @@ def dynmotd():
 
 
 def confuser(CONF_ROOT, ACTIONS, user):
-    # Create the new admin user (default group=username); add to admin group
-    run('getent passwd {username}  || adduser {username} --disabled-password --gecos ""'.format(
-        username=user["USER"]))
+    try:
+        run('getent passwd {username}  || adduser {username} --disabled-password --gecos ""'.format(
+            username=user["USER"]))
+        Logger.writelog("[OK] Create the new user {username}").format(
+            username=user["USER"])
 
-    # Set the password for the new user
-    run('echo "{username}:{password}" | chpasswd'.format(
-        username=user["USER"],
-        password=user["PASSWORD"]))
+        run('echo "{username}:{password}" | chpasswd'.format(
+            username=user["USER"],
+            password=user["PASSWORD"]))
 
-    run("mkdir -p /home/{username}/.ssh/".format(username=user["USER"]))
-    run("echo '' > /home/{username}/.ssh/authorized_keys".format(username=user["USER"]))
-    for key in user["KEY"]:
-        run("echo {keyv} >> /home/{username}/.ssh/authorized_keys".format(keyv=key, username=user["USER"]))
-        run("chmod 600 -R /home/{username}/.ssh/authorized_keys".format(username=user["USER"]))
+        Logger.writelog("[OK] Set password for the new user {username}").format(
+            username=user["USER"])
 
-    if "USERBASHRC" in ACTIONS:
-        files_list = [
-            ['/conf/SYSTEM/bashrc', '/home/{username}/.bashrc'.format(username=user["USER"]), '0640'],
-            ['/conf/SYSTEM/bash_profile', '/home/{username}/.bash_profile'.format(username=user["USER"]), '0640']
-        ]
-        copyfiles(CONF_ROOT, files_list)
+        run("mkdir -p /home/{username}/.ssh/".format(username=user["USER"]))
+        Logger.writelog("[OK] Create root dir for new user {username}").format(
+            username=user["USER"])
 
-    run("chown {username}: -R /home/{username}/".format(username=user["USER"]))
+        run("echo '' > /home/{username}/.ssh/authorized_keys".format(username=user["USER"]))
+        for key in user["KEY"]:
+            run("echo {keyv} >> /home/{username}/.ssh/authorized_keys".format(keyv=key, username=user["USER"]))
+            run("chmod 600 -R /home/{username}/.ssh/authorized_keys".format(username=user["USER"]))
+        Logger.writelog("[OK] Set ssh keys for {username}").format(
+            username=user["USER"])
+
+        if "USERBASHRC" in ACTIONS:
+            files_list = [
+                ['/conf/SYSTEM/bashrc', '/home/{username}/.bashrc'.format(username=user["USER"]), '0640'],
+                ['/conf/SYSTEM/bash_profile', '/home/{username}/.bash_profile'.format(username=user["USER"]), '0640']
+            ]
+            copyfiles(CONF_ROOT, files_list)
+            Logger.writelog("[OK] Set new bashrc for the new user {username}").format(
+                username=user["USER"])
+
+        run("chown {username}: -R /home/{username}/".format(username=user["USER"]))
+        Logger.writelog("[OK] Set right for the rootdir to {username}").format(
+            username=user["USER"])
+
+    except BaseException as e:
+        Logger.writelog("[ERROR] while  setting new user ({error})".format(error=e))
+        if exiterror:
+            print("Error found: {error}".format(error=e))
+            exit(1)
 
 
 def changehostname(hostname):
@@ -662,7 +713,9 @@ def changehostname(hostname):
 def changehostsfile(hostname, ip):
     try:
         run("echo > /etc/hosts")
+        Logger.writelog("[OK] Flush hosts file")
         run("echo 127.0.0.1 localhost >> /etc/hosts")
+        Logger.writelog("[OK] Set localhost in host file")
         run("echo {0} {1} >> /etc/hosts".format(ip, hostname))
         Logger.writelog("[OK] Change hostfile with {0} {1})".format(ip, hostname))
     except BaseException as e:
@@ -679,6 +732,7 @@ def host_type():
 
 def getinsterfacesname():
     nameint = run("dmesg |grep renamed.*eth|awk -F' ' '{print substr($5,0,length($5)-1)}'")
+    Logger.writelog("[OK] Get interface name {0}".format(nameint))
     return nameint
 
 
@@ -719,7 +773,7 @@ def install_packages(conf_root, roles):
         for package in config.get(role, 'packages').split(' '):
             try:
                 run("apt-get install -y {0}".format(package))
-                Logger.writelog("[OK] Installation package {package})".format(package=package))
+                Logger.writelog("[OK] Installation package {package}".format(package=package))
             except BaseException as e:
                 Logger.writelog("[ERROR] Installation package {package} ({error})".format(
                     package=package, error=e
