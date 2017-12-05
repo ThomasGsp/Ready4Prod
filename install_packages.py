@@ -346,6 +346,7 @@ def mysql_user(action, value):
             print("Error found: {error}".format(error=e))
             exit(1)
 
+
 def mysql_base(action, value):
     try:
         if action == "create":
@@ -360,14 +361,24 @@ def mysql_base(action, value):
             print("Error found: {error}".format(error=e))
             exit(1)
 
+
 #  TRANSVERSE  #
 def sedvalue(str_src, str_dest, conf_file):
-    run('sed -i "s/{src_string}/{dest_string}/g" {filedir}'
-        .format(src_string=str_src, dest_string=str_dest, filedir=conf_file)
-    )
-    Logger.writelog("[OK] Sed {src_string}, to {dest_string}, in {filedir}"
-        .format(src_string=str_src, dest_string=str_dest, filedir=conf_file)
-    )
+    try:
+        run('sed -i "s/{src_string}/{dest_string}/g" {filedir}'
+            .format(src_string=str_src, dest_string=str_dest, filedir=conf_file)
+        )
+        Logger.writelog("[OK] Sed {src_string}, to {dest_string}, in {filedir}"
+            .format(src_string=str_src, dest_string=str_dest, filedir=conf_file)
+        )
+    except BaseException as e:
+        Logger.writelog("[ERROR] Sed {src_string}, to {dest_string}, in {filedir} ({error})"
+                        .format(src_string=str_src, dest_string=str_dest, filedir=conf_file, error=e)
+        )
+        if exiterror:
+            print("Error found: {error}".format(error=e))
+            exit(1)
+
 
 def copyfiles(conf_root, files_list):
     for file in files_list:
@@ -404,12 +415,13 @@ def service_gestion(service, action):
 
 #  APACHE  #
 def confapache(HOSTNAME, APACHELISTEN):
-        sedvalue("{servername}", HOSTNAME, "/etc/apache2/apache2.conf")
-        sedvalue("{APACHE_LISTEN}", APACHELISTEN, "/etc/apache2/ports.conf")
-        sedvalue("{APACHE_LISTEN}", APACHELISTEN, "/etc/apache2/sites-available/000-default.conf")
-        apache_confactivation(["security.conf", "badbot.conf"])
-        apache_modactivation(["headers"])
-        service_gestion("apache2", "restart")
+    # No try necessary here
+    sedvalue("{servername}", HOSTNAME, "/etc/apache2/apache2.conf")
+    sedvalue("{APACHE_LISTEN}", APACHELISTEN, "/etc/apache2/ports.conf")
+    sedvalue("{APACHE_LISTEN}", APACHELISTEN, "/etc/apache2/sites-available/000-default.conf")
+    apache_confactivation(["security.conf", "badbot.conf"])
+    apache_modactivation(["headers"])
+    service_gestion("apache2", "restart")
 
 
 def apache_modactivation(modslist):
@@ -426,6 +438,7 @@ def apache_modactivation(modslist):
                 print("Error found: {error}".format(error=e))
                 exit(1)
 
+
 def apache_confactivation(conflist):
     for conf in conflist:
         try:
@@ -440,6 +453,7 @@ def apache_confactivation(conflist):
                 print("Error found: {error}".format(error=e))
                 exit(1)
 
+
 def apache_siteactivation(sitelist):
     for site in sitelist:
         try:
@@ -453,6 +467,7 @@ def apache_siteactivation(sitelist):
             if exiterror:
                 print("Error found: {error}".format(error=e))
                 exit(1)
+
 
 def confvhosts(CONF_ROOT, FILEDIR, APACHELISTEN, VHOST):
     run('mkdir -p /var/www/{servername}/prod/'.format(servername=VHOST["SERVER_NAME"]))
@@ -500,10 +515,19 @@ def confvhosts(CONF_ROOT, FILEDIR, APACHELISTEN, VHOST):
 
 
 def confvarnish():
-    run('rm /etc/varnish/default.vcl')
-    run('ln -sf /etc/varnish/production.vcl /etc/varnish/default.vcl')
-    run('chown varnish:varnish -R /etc/varnish/')
-    run('systemctl daemon-reload')
+    try:
+        run('rm /etc/varnish/default.vcl')
+        run('ln -sf /etc/varnish/production.vcl /etc/varnish/default.vcl')
+        run('chown varnish:varnish -R /etc/varnish/')
+        # New systemd file settings
+        run('systemctl daemon-reload')
+        Logger.writelog("[OK] Varnish configurations are applied")
+    except BaseException as e:
+        Logger.writelog("[ERROR] while varnish configuration ({error})".format(error=e))
+        if exiterror:
+            print("Error found: {error}".format(error=e))
+            exit(1)
+
     service_gestion("varnish", "restart")
 
 
@@ -512,8 +536,17 @@ def confphpfpm():
 
 
 def confhitch():
-    run('chown _hitch:_hitch -R /etc/hitch/')
+    try:
+        run('chown _hitch:_hitch -R /etc/hitch/')
+        Logger.writelog("[OK] Hitch configurations are applied")
+    except BaseException as e:
+        Logger.writelog("[ERROR] while Hitch configuration ({error})".format(error=e))
+        if exiterror:
+            print("Error found: {error}".format(error=e))
+            exit(1)
+
     service_gestion("hitch", "restart")
+
 
 #  SYSTEM  #
 def upgrade():
@@ -527,20 +560,32 @@ def changedns(ips):
         run("echo nameserver {dnsip} >> /etc/resolv.conf ".format(dnsip=ip))
 
 def changehostkey():
-    print("Remove old ssh key...")
-    run("/bin/rm -v /etc/ssh/ssh_host_*")
-    print("Generate new key...")
-    run("dpkg-reconfigure openssh-server")
-    print("Restart sshd service")
+    try:
+        # Remove old ssh key...
+        run("/bin/rm -v /etc/ssh/ssh_host_*")
+        # Generate new key...
+        run("dpkg-reconfigure openssh-server")
+        Logger.writelog("[OK] host ssh key has been updated")
+    except BaseException as e:
+        Logger.writelog("[ERROR] while update ssh host key {error}".format(error=e))
+        if exiterror:
+            print("Error found: {error}".format(error=e))
+            exit(1)
+
     service_gestion("sshd", "restart")
 
 
 def conffirewall(PORT_SSH_NUMBER, CONF_INTERFACES):
-    print("Configure firewall...")
     sedvalue("{PUBLIC_IP}", CONF_INTERFACES["NETWORK_IP"], "/etc/init.d/firewall")
     sedvalue("{PORT_NUMBER}", PORT_SSH_NUMBER, "/etc/init.d/firewall")
-    print("Apply Firewall")
-    run("bash /etc/init.d/firewall")
+    try:
+        run("bash /etc/init.d/firewall")
+        Logger.writelog("[OK] Apply firewall file)")
+    except BaseException as e:
+        Logger.writelog("[ERROR] in the firewall files: {error}".format(error=e))
+        if exiterror:
+            print("Error found: {error}".format(error=e))
+            exit(1)
 
 
 def confssh(PORT_SSH_NUMBER):
@@ -555,16 +600,26 @@ def sshguard(ips):
         run("echo {sshguardip} >> /etc/sshguard/whitelist ".format(sshguardip=ip))
     service_gestion("sshguard.service", "restart")
 
+
 def confpostfix(HOSTNAME):
+    # No try necessary here
     sedvalue("{servername}", HOSTNAME, "/etc/postfix/main.cf")
     service_gestion("postfix", "restart")
 
 
 def dynmotd():
-    run('if [ ! -d "/etc/update-motd.d/" ];then mkdir /etc/update-motd.d; chmod +x /etc/update-motd.d; fi')
-    run('rm -f /etc/motd')
-    run('rm -f /etc/update-motd.d/*')
-    run('ln -sf /var/run/motd.dynamic.new /etc/motd')
+    try:
+        run('if [ ! -d "/etc/update-motd.d/" ];then mkdir /etc/update-motd.d; chmod +x /etc/update-motd.d; fi')
+        run('rm -f /etc/motd')
+        run('rm -f /etc/update-motd.d/*')
+        run('ln -sf /var/run/motd.dynamic.new /etc/motd')
+        Logger.writelog("[OK] Set new motd )")
+        Logger.writelog("[INFO] You can view this new motd at the new ssh connection")
+    except BaseException as e:
+        Logger.writelog("[ERROR] while motd setting ({error})".format(error=e))
+        if exiterror:
+            print("Error found: {error}".format(error=e))
+            exit(1)
 
 
 def confuser(CONF_ROOT, ACTIONS, user):
@@ -618,6 +673,7 @@ def changehostsfile(hostname, ip):
 
 
 def host_type():
+    # No try necessary here
     run('uname -s')
 
 
