@@ -10,28 +10,41 @@ Build your linux LAMP server.
 
 ##### Stack available:
 * Basic LAMP
+* Advanced LAMP
 
 ### Features
-* Upgrade VM
-* Change hostname
-* Change hosts file
-* Change ssh host key
-* Change DNS
-* New motd (see example on bottom)
-* Add an IPTABLES firewall
-* Configure VIM
-* Configure network
-* Configure ssh server (port & others)
-* Install a ssh guard (brute force...)
-* New bashrc
-* Install lamp stack (basic stack or avanced stack)
-* Configure LAMP softwares (apache, mariadb, php...)
-* Configure smtp server (postfix)
-* Configure log rotation
-* Create basic vhosts
 
-##### Next features:
-* New stack with cache, ssl and fpm-pools
+#### Base - configuration
+* Upgrade VM
+* Hostname
+* Hosts files
+* SSH host key
+* DNS resolver
+* Motd
+* Firewall - IPTABLES
+* VIM
+* Network - IP, GW...
+* SSH Server
+* SSH Protection (bruteforce)
+* Bashrc
+* SMTP Server - Postfix
+* Log management (Logrotate, rsyslog)
+
+#### LAMP - Basic
+* HTTP Server - Apache2.4
+* VHOST - examples
+* Database - MariaDB
+* PHP7 - Lib Apache Mod
+
+#### LAMP - Advanced
+* HTTP Server - Apache2.4
+* VHOST - examples
+* Database - MariaDB
+* PHP7 - FPM (Single base pool example)
+* HTTP Cache - Varnish
+* SSL Reverse - Hitch
+* SSL generation - LetsEncrypt
+
 
 ## Quick start
 
@@ -55,13 +68,33 @@ vi install_packages.py
     (....)
 
 
+    # Composants list
+    # ALL ( All composants = default)
+    # UPGRADE, HOSTNAME, SSHHOSTKEY, DNS, USERBASHRC, NETWORK, MOTD ,FW ( Firewall) ,VIM (Vim configuration)
+    # SSH (sshd + sshguard), SMTP (postfix conf), LOGS, VHOSTS, USERS
+
+    BASE = [
+        "UPGRADE", "HOSTNAME",
+        "SSHHOSTKEY", "DNS",
+        "USERBASHRC", "NETWORK",
+        "MOTD", "FW",
+        "VIM", "SSH",
+        "SMTP", "LOGS",
+        "USERS", "VHOSTS"
+    ]
+
+    # LAMP_BASE (Apache, mariadb, phpmod)  OR
+    # LAMP_AVANCED (Apache, mariadb, php-fpm, ssl, varnish) // not avalaible
+    LAMP = ["LAMP_ADVANCED"]
+
+
     # Vhost apache2.4 configuration
     VHOSTS = \
         [
             {
                 "SERVER_NAME": "sitedemo.com",
                 "SERVER_NAME_ALIAS": ["www.sitedemo.com", "www.sitedemo.fr"],
-                "FILES": "/data/sitedemo.com/index.html"
+                "FILES": "/data/sitedemo.com/index.html",
             },
             {
                 "SERVER_NAME": "sitedemo1.com",
@@ -79,8 +112,8 @@ vi install_packages.py
     # SSH PORT
     PORT_SSH_NUMBER = "22"
 
-    # SSHGUARD ip white list
-    SSHGUARD_WL_IP = ["192.168.1.1", "172.16.10.5"]
+    # GENERAL WHITELIST IP (SSH, FIREWALL, SOFT...)
+    WHITELITSTIPS = ["192.168.1.1", "172.16.10.5", "127.0.0.1"]
 
     # NETWORK configuration
     CONF_INTERFACES = {}
@@ -110,7 +143,6 @@ vi install_packages.py
                 "database": "prodbase"
             }
         ]
-
     (....)
 
 ```
@@ -131,9 +163,6 @@ fab -f install_packages.py deploy_base_lamp -H <ip_srv>
 ![motd](./img/lamp_base_motd.png)
 #### netstat (base lamp)
 ![netstat](./img/lamp_base_netstat.png)
-
-
-### Features propositions and issues
 
 
 ##### External sources:

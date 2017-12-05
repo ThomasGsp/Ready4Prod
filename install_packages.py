@@ -31,8 +31,8 @@ def deploy_base_lamp():
     logfile = "/tmp/logsinstallr4p"
     Logger = Logs(logfile)
 
-    # Exit ON error (stop program on error)
-    exiterror = False
+    # Exit ON error (stop program on error) - True or False (CASE!)
+    exiterror = True
 
     # SYSTEM INFORMATION
     # THIS VALUE ARE USED IN CALCUL TO SET THE AUTOMATICS PARAMETERS IN THE SOFTWARES
@@ -482,9 +482,9 @@ def apache_siteactivation(sitelist):
 def confvhosts(CONF_ROOT, FILEDIR, APACHELISTEN, VHOST):
     try:
         run('mkdir -p /var/www/{servername}/prod/'.format(servername=VHOST["SERVER_NAME"]))
-        Logger.writelog("[OK] Create file dir for new vhost {servername}").format(servername=VHOST["SERVER_NAME"])
+        Logger.writelog("[OK] Create file dir for new vhost {servername}".format(servername=VHOST["SERVER_NAME"]))
         run('mkdir -p /var/log/apache2/{servername}/'.format(servername=VHOST["SERVER_NAME"]))
-        Logger.writelog("[OK] Create logs dir for new vhost {servername}").format(servername=VHOST["SERVER_NAME"])
+        Logger.writelog("[OK] Create logs dir for new vhost {servername}".format(servername=VHOST["SERVER_NAME"]))
         filename, file_extension = os.path.splitext(CONF_ROOT + VHOST["FILES"])
 
         copyfiles(CONF_ROOT, [
@@ -502,7 +502,7 @@ def confvhosts(CONF_ROOT, FILEDIR, APACHELISTEN, VHOST):
                  .format(servername=VHOST["SERVER_NAME"]))
         sedvalue("{APACHE_LISTEN}", APACHELISTEN, "/etc/apache2/sites-available/010.{servername}.conf"
                  .format(servername=VHOST["SERVER_NAME"]))
-        Logger.writelog("[OK] Push new vhost and files for {servername}").format(servername=VHOST["SERVER_NAME"])
+        Logger.writelog("[OK] Push new vhost and files for {servername}".format(servername=VHOST["SERVER_NAME"]))
 
         if VHOST["FILES"]:
             sitefile = "/var/www/{servername}/prod/site_tmp{fileexten}".format(servername=VHOST["SERVER_NAME"],
@@ -524,10 +524,10 @@ def confvhosts(CONF_ROOT, FILEDIR, APACHELISTEN, VHOST):
         run('chown 33:33 -R /var/www/{servername}'.format(servername=VHOST["SERVER_NAME"]))
         run('find /var/www/{servername} -type d -exec chmod 750 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
         run('find /var/www/{servername} -type f -exec chmod 640 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
-        Logger.writelog("[OK] Set chmod / chown for {servername}").format(servername=VHOST["SERVER_NAME"])
+        Logger.writelog("[OK] Set chmod / chown for {servername}".format(servername=VHOST["SERVER_NAME"]))
 
         apache_siteactivation(["010.{servername}.conf".format(servername=VHOST["SERVER_NAME"])])
-        Logger.writelog("[OK] Active vhost {servername}").format(servername=VHOST["SERVER_NAME"])
+        Logger.writelog("[OK] Active vhost {servername}".format(servername=VHOST["SERVER_NAME"]))
 
     except BaseException as e:
         Logger.writelog("[ERROR] while apache vhost configuration ({error})".format(error=e))
@@ -656,28 +656,21 @@ def dynmotd():
 
 def confuser(CONF_ROOT, ACTIONS, user):
     try:
-        run('getent passwd {username}  || adduser {username} --disabled-password --gecos ""'.format(
-            username=user["USER"]))
-        Logger.writelog("[OK] Create the new user {username}").format(
-            username=user["USER"])
+        run('getent passwd {username}  || adduser {username} --disabled-password --gecos ""'.format(username=user["USER"]))
+        Logger.writelog("[OK] Create the new user {username}".format(username=user["USER"]))
 
-        run('echo "{username}:{password}" | chpasswd'.format(
-            username=user["USER"],
-            password=user["PASSWORD"]))
-
-        Logger.writelog("[OK] Set password for the new user {username}").format(
-            username=user["USER"])
+        run('echo "{username}:{password}" | chpasswd'.format(username=user["USER"], password=user["PASSWORD"]))
+        Logger.writelog("[OK] Set password for the new user {username}".format(username=user["USER"]))
 
         run("mkdir -p /home/{username}/.ssh/".format(username=user["USER"]))
-        Logger.writelog("[OK] Create root dir for new user {username}").format(
-            username=user["USER"])
+        Logger.writelog("[OK] Create root dir for new user {username}".format(username=user["USER"]))
 
         run("echo '' > /home/{username}/.ssh/authorized_keys".format(username=user["USER"]))
         for key in user["KEY"]:
             run("echo {keyv} >> /home/{username}/.ssh/authorized_keys".format(keyv=key, username=user["USER"]))
             run("chmod 600 -R /home/{username}/.ssh/authorized_keys".format(username=user["USER"]))
-        Logger.writelog("[OK] Set ssh keys for {username}").format(
-            username=user["USER"])
+
+        Logger.writelog("[OK] Set ssh keys for {username}".format(username=user["USER"]))
 
         if "USERBASHRC" in ACTIONS:
             files_list = [
@@ -685,12 +678,10 @@ def confuser(CONF_ROOT, ACTIONS, user):
                 ['/conf/SYSTEM/bash_profile', '/home/{username}/.bash_profile'.format(username=user["USER"]), '0640']
             ]
             copyfiles(CONF_ROOT, files_list)
-            Logger.writelog("[OK] Set new bashrc for the new user {username}").format(
-                username=user["USER"])
+            Logger.writelog("[OK] Set new bashrc for the new user {username}".format(username=user["USER"]))
 
         run("chown {username}: -R /home/{username}/".format(username=user["USER"]))
-        Logger.writelog("[OK] Set right for the rootdir to {username}").format(
-            username=user["USER"])
+        Logger.writelog("[OK] Set right for the rootdir to {username}".format(username=user["USER"]))
 
     except BaseException as e:
         Logger.writelog("[ERROR] while  setting new user ({error})".format(error=e))
