@@ -363,27 +363,28 @@ function __setprompt
 
     PS1=""
 
-	# Date
-	PS1+="\[${DARKGRAY}\](\[${CYAN}\]\$(date +%a) $(date +%b-'%-m')" # Date
-	PS1+="${BLUE} $(date +'%-I':%M:%S%P)\[${DARKGRAY}\] - " # Time
+#   # Date
+#   PS1+="\[${DARKGRAY}\](\[${CYAN}\]\$(date +%a) $(date +%b-'%-m')" # Date
+#   PS1+="${BLUE} $(date +'%-I':%M:%S%P)\[${DARKGRAY}\] - " # Time
 
-	# User and server
-	local SSH_IP=`echo $SSH_CLIENT | awk '{ print $1 }'`
-	local SSH2_IP=`echo $SSH2_CLIENT | awk '{ print $1 }'`
-	if [ $SSH2_IP ] || [ $SSH_IP ] ; then
-		PS1+="\[${RED}\]\u@\h"
-	else
-		PS1+="\[${RED}\]\u"
-	fi
 
-	# Current directory
-	PS1+="\[${DARKGRAY}\]:\[${BROWN}\]\w\[${DARKGRAY}\])-"
+    # User and server
+    local SSH_IP=`echo $SSH_CLIENT | awk '{ print $1 }'`
+    local SSH2_IP=`echo $SSH2_CLIENT | awk '{ print $1 }'`
+    if [ $SSH2_IP ] || [ $SSH_IP ] ; then
+            PS1+="\[${RED}\]\u@\h"
+    else
+            PS1+="\[${RED}\]\u"
+    fi
 
-	if [[ $EUID -ne 0 ]]; then
-		PS1+="\[${GREEN}\]>\[${NOCOLOR}\] " # Normal user
-	else
-		PS1+="\[${RED}\]>\[${NOCOLOR}\] " # Root user
-	fi
+    # Current directory
+    PS1+="\[${DARKGRAY}\]:\[${BROWN}\]\w\[${DARKGRAY}\]"
+
+    if [[ $EUID -ne 0 ]]; then
+            PS1+="\[${GREEN}\] # \[${NOCOLOR}\] " # Normal user
+    else
+            PS1+="\[${RED}\] # \[${NOCOLOR}\] " # Root user
+    fi
 
 	# PS2 is used to continue a command using the \ character
 	PS2="\[${DARKGRAY}\]>\[${NOCOLOR}\] "
