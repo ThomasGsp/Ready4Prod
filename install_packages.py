@@ -159,6 +159,8 @@ def deploy_base_lamp():
         CONF_FILE = CONF_ROOT+"/debian9_lamp_basic.ini"
         FILEDIR = "BASE"
 
+    if "MOTD" in ACTIONS: dynmotd()
+
     files_list = [
         ['/conf/SYSTEM/sources.list', '/etc/apt/sources.list', '0640'],
         ['/conf/SYSTEM/cpb.bash', '/usr/local/bin/cpb', '0755'],
@@ -185,7 +187,7 @@ def deploy_base_lamp():
     if "HOSTNAME" in ACTIONS: changehostsfile(HOSTNAME, CONF_INTERFACES["NETWORK_IP"])
     if "SSHHOSTKEY" in ACTIONS: changehostkey()
     if "DNS" in ACTIONS: changedns(NETWORK_DNS)
-    if "MOTD" in ACTIONS: dynmotd()
+
 
     """ Add user key """
     if "USERS" in ACTIONS:
