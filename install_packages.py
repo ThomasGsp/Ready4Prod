@@ -75,7 +75,6 @@ def deploy_base_lamp():
         "HITCH", "SSL"
     ]
 
-
     # VHOSTS configuration
     #  MUST BE A DICT
     VHOSTS = \
@@ -86,7 +85,7 @@ def deploy_base_lamp():
                 # Secondary domain name
                 "SERVER_NAME_ALIAS": ["www.sitedemo.com", "www.sitedemo.fr"],
                 # File for this domain ( zip, tar, tar.gz, tar.bz2, direct files)
-                "FILES": "/data/sitedemo.com/",
+                "FILES": "/data/sitedemo.com/*",
             },
             {
                 "SERVER_NAME": "sitedemo1.com",
@@ -322,6 +321,7 @@ def deploy_base_lamp():
         for line in searchfile:
             if '[ERROR]' in line or '[INFO]' in line:
                 print(line)
+    print("All logs availables in {logfile}".format(logfile=logfile))
 # ------------------------------------------ #
 
 #  MYSQL  #
@@ -497,14 +497,11 @@ def confvhosts(CONF_ROOT, FILEDIR, APACHELISTEN, VHOST):
         Logger.writelog("[OK] Create file dir for new vhost {servername}".format(servername=VHOST["SERVER_NAME"]))
         run('mkdir -p /var/log/apache2/{servername}/'.format(servername=VHOST["SERVER_NAME"]))
         Logger.writelog("[OK] Create logs dir for new vhost {servername}".format(servername=VHOST["SERVER_NAME"]))
-        filename, file_extension = os.path.splitext(CONF_ROOT + VHOST["FILES"])
 
         copyfiles(CONF_ROOT, [
             ['/conf/APACHE/2.4/sites-available/{filedir}/010-mywebsite.com.conf'.format(filedir=FILEDIR),
              '/etc/apache2/sites-available/010.{servername}.conf'
-                  .format(servername=VHOST["SERVER_NAME"]), '0640'],
-            ['{files}'.format(files=VHOST["FILES"]), '/var/www/{servername}/prod/site_tmp{fileexten}'
-                  .format(servername=VHOST["SERVER_NAME"], fileexten=file_extension), '0640']
+                  .format(servername=VHOST["SERVER_NAME"]), '0640']
         ])
 
         sedvalue("{domain_name}", VHOST["SERVER_NAME"], "/etc/apache2/sites-available/010.{servername}.conf"
@@ -517,24 +514,36 @@ def confvhosts(CONF_ROOT, FILEDIR, APACHELISTEN, VHOST):
         Logger.writelog("[OK] Push new vhost and files for {servername}".format(servername=VHOST["SERVER_NAME"]))
 
         if VHOST["FILES"]:
-            sitefile = "/var/www/{servername}/prod/site_tmp{fileexten}".format(servername=VHOST["SERVER_NAME"],
-                                                                               fileexten=file_extension)
+            filename, file_extension = os.path.splitext(CONF_ROOT + VHOST["FILES"])
             sitedir = "/var/www/{servername}/prod/".format(servername=VHOST["SERVER_NAME"])
-            if file_extension == ".zip":
-                run("unzip {0} -d {1}".format(sitefile, sitedir))
-                run("rm {0}".format(sitefile))
-            elif file_extension == ".tar":
-                run("tar -xvf  {0} {1}".format(sitefile, sitedir))
-                run("rm {0}".format(sitefile))
-            elif file_extension == ".tar.gz":
-                run("tar -xzvf  {0} {1}".format(sitefile, sitedir))
-                run("rm {0}".format(sitefile))
-            elif file_extension == ".tar.bz2":
-                run("tar -xjvf  {0} {1}".format(sitefile, sitedir))
-                run("rm {0}".format(sitefile))
+
+            # Delete currents files
+            run("rm -rf {sitedir}*".format(sitedir=sitedir))
+
+            if file_extension:
+                copyfiles(CONF_ROOT, [
+                    ['{files}'.format(files=VHOST["FILES"]), '/var/www/{servername}/prod/site_tmp{fileexten}'
+                          .format(servername=VHOST["SERVER_NAME"], fileexten=file_extension), '0640']
+                ])
+                sitefile = "/var/www/{servername}/prod/site_tmp{fileexten}".format(servername=VHOST["SERVER_NAME"],
+                                                                                  fileexten=file_extension)
+                if file_extension == ".zip":
+                    run("unzip {0} -d {1}".format(sitefile, sitedir))
+                    run("rm {0}".format(sitefile))
+                elif file_extension == ".tar":
+                    run("tar -xvf  {0} {1}".format(sitefile, sitedir))
+                    run("rm {0}".format(sitefile))
+                elif file_extension == ".tar.gz":
+                    run("tar -xzvf  {0} {1}".format(sitefile, sitedir))
+                    run("rm {0}".format(sitefile))
+                elif file_extension == ".tar.bz2":
+                    run("tar -xjvf  {0} {1}".format(sitefile, sitedir))
+                    run("rm {0}".format(sitefile))
+                else:
+                    Logger.writelog(
+                        "[ERROR] File format not supported {0} {1}".format(sitefile, sitedir))
             else:
                 put(CONF_ROOT + VHOST["FILES"], sitedir)
-
 
         run('chown 33:33 -R /var/www/{servername}'.format(servername=VHOST["SERVER_NAME"]))
         run('find /var/www/{servername} -type d -exec chmod 750 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
@@ -570,6 +579,7 @@ def confvarnish(VM_C):
         if exiterror:
             print("Error found: {error}".format(error=e))
             exit(1)
+
 
 def confphpfpm(VM_C):
     ramalloc = int(VM_C['RAM'] / 8)
