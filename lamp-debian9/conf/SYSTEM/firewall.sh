@@ -16,7 +16,7 @@ iptables -A OUTPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
 
 #Interdire toute connexion
 iptables -t filter -P INPUT DROP
-iptables -t filter -P FORWARD ACCEPT
+iptables -t filter -P FORWARD DROP
 iptables -t filter -P OUTPUT DROP
 
 # Autoriser loopback
