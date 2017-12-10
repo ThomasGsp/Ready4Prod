@@ -35,7 +35,7 @@ def deploy_base_lamp():
     exiterror = True
 
     # SYSTEM INFORMATION
-    # THIS VALUE ARE USED IN CALCUL TO SET THE AUTOMATICS PARAMETERS IN THE SOFTWARES
+    # THIS VALUE ARE USED TO SET THE AUTOMATICS PARAMETERS IN THE SOFTWARES
     VM_C = {
         "CPU": 4,
         "RAM": 8096
@@ -86,7 +86,7 @@ def deploy_base_lamp():
                 # Secondary domain name
                 "SERVER_NAME_ALIAS": ["www.sitedemo.com", "www.sitedemo.fr"],
                 # File for this domain ( zip, tar, tar.gz, tar.bz2, direct files)
-                "FILES": "/data/sitedemo.com/index.html",
+                "FILES": "/data/sitedemo.com/",
             },
             {
                 "SERVER_NAME": "sitedemo1.com",
@@ -532,7 +532,9 @@ def confvhosts(CONF_ROOT, FILEDIR, APACHELISTEN, VHOST):
             elif file_extension == ".tar.bz2":
                 run("tar -xjvf  {0} {1}".format(sitefile, sitedir))
                 run("rm {0}".format(sitefile))
-            # Finir ici les fichiers directs
+            else:
+                put(CONF_ROOT + VHOST["FILES"], sitedir)
+
 
         run('chown 33:33 -R /var/www/{servername}'.format(servername=VHOST["SERVER_NAME"]))
         run('find /var/www/{servername} -type d -exec chmod 750 -v {{}} \;'.format(servername=VHOST["SERVER_NAME"]))
@@ -606,6 +608,7 @@ def changedns(ips):
     for ip in ips:
         run("echo nameserver {dnsip} >> /etc/resolv.conf ".format(dnsip=ip))
         Logger.writelog("[OK] IP {dnsip} added in resolv file".format(dnsip=ip))
+
 
 def changehostkey():
     try:
