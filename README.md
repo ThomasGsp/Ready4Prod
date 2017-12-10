@@ -14,7 +14,7 @@ Build your linux LAMP server.
 
 ### Features
 
-#### Base - configuration
+#### Base
 * Upgrade VM
 * Hostname
 * Hosts files
@@ -45,18 +45,21 @@ Build your linux LAMP server.
 * SSL Reverse - Hitch
 * SSL generation - LetsEncrypt
 
+###### Nexts features / bug patch
+* Improve MariaDB config
+* Improve PHP7 config
 
 ## Quick start
 
 ### Limitations
-* Do not use on a existent server (in production)!
+* Do not use on a existent server in production !
 
 ### Requirement:
 * Linux (Debian 9) server, with full root access
 * Python with fabric (http://www.fabfile.org/)
 
 
-### Clone repository:
+### Clone repository on your desktop:
 ``` bash
 git clone git@github.com:ThomasGsp/Ready4Prod.git
 ```
