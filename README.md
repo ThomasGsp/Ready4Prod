@@ -4,7 +4,7 @@ Build your linux LAMP server.
 
 * Author : Tlams
 * Date : Nov 2017
-* Status: Active development, for production user v1.0 branch
+* Status: Active development, for production use v1.0 branch
 * Website: https://www.ready4prod.com/
 
 
