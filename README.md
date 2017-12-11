@@ -4,7 +4,7 @@ Build your linux LAMP server.
 
 * Author : Tlams
 * Date : Nov 2017
-* Status: Active development
+* Status: Stable V1.0
 * Website: https://www.ready4prod.com/
 
 
@@ -47,6 +47,7 @@ Build your linux LAMP server.
 
 ###### Nexts features / bug patch
 * Improve MariaDB config
+* Improve Apache config
 * Improve PHP7 config
 
 ## Quick start
