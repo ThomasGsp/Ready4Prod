@@ -67,7 +67,7 @@ def deploy_base_lamp():
     # LAMP_BASE (Apache, mariadb, phpmod)  OR
     # LAMP_AVANCED (Apache, mariadb, php-fpm, ssl, varnish)
     # MUST BE A LIST
-    LAMP = ["LAMP_ADVANCED"]
+    LAMP = ["LAMP_BASE"]
 
     SOFT = [
         "VHOSTS", "VARNISH",
@@ -113,7 +113,7 @@ def deploy_base_lamp():
     # NETWORK configuration
     # MUST BE A STRING
     CONF_INTERFACES = {}
-    CONF_INTERFACES["NETWORK_IP"] = "172.16.0.207"
+    CONF_INTERFACES["NETWORK_IP"] = "172.16.0.208"
     CONF_INTERFACES["NETWORK_MASK"] = "255.255.255.0"
     CONF_INTERFACES["NETWORK_GW"] = "172.16.0.254"
     CONF_INTERFACES["mode"] = "static"
@@ -800,7 +800,7 @@ def install_packages(conf_root, roles):
     for role in roles:
         for package in config.get(role, 'packages').split(' '):
             try:
-                run("apt-get install -y {0}".format(package))
+                run("DEBIAN_FRONTEND=noninteractive apt-get install -y {0}".format(package))
                 Logger.writelog("[OK] Installation package {package}".format(package=package))
             except BaseException as e:
                 Logger.writelog("[ERROR] Installation package {package} ({error})".format(
