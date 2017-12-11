@@ -10,7 +10,7 @@ import datetime
 global Logger, exiterror
 
 
-def deploy_base_lamp():
+def deploy_lamp():
     global Logger, exiterror
     """ 
     **********************
@@ -325,6 +325,8 @@ def deploy_base_lamp():
                 print(line)
     print("All logs availables in {logfile}".format(logfile=logfile))
 # ------------------------------------------ #
+
+
 
 #  MYSQL  #
 def mysql_iniconf():
