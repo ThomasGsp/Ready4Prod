@@ -5,28 +5,41 @@ Author : Tlams
 Revision : 1.0
 Last update : Dec 2017
 """
+# Imports
+import os
+from fabric.api import *
+from libs.transverse import *
+from libs.debian9.system import *
+from libs.debian9.services import *
+from libs.debian9.apache import *
+from libs.debian9.maria import  *
 
 
 class Varnish:
-    def __init__(self, conf_root):
-        self.conf_root = conf_root
 
-    def conf_varnish(self, VM_C):
+    def __init__(self, confr4p, logger):
+        self.confr4p = confr4p
+        self.exitonerror = confr4p["EXITONERROR"]
+        self.logger = logger
+        self.transverse = self.transverse(confr4p, logger)
+        self.services = self.services(confr4p, logger)
+
+    def conf_varnish(self):
         try:
-            ramalloc = int(VM_C['RAM'] / 4)
+            ramalloc = int(self.confr4p['VM_C']['RAM'] / 4)
             run('rm /etc/varnish/default.vcl')
-            Logger.writelog("[OK] Clean old varnish configuration")
+            self.logger.writelog("[OK] Clean old varnish configuration")
             run('ln -sf /etc/varnish/production.vcl /etc/varnish/default.vcl')
-            sedvalue("{RAMALLOC}", ramalloc, "/etc/default/varnish")
-            Logger.writelog("[OK] Link new varnish configuration")
+            self.transverse.sedvalue("{RAMALLOC}", ramalloc, "/etc/default/varnish")
+            self.logger.writelog("[OK] Link new varnish configuration")
             run('chown varnish:varnish -R /etc/varnish/')
-            Logger.writelog("[OK] Apply rights on varnish configuration")
+            self.logger.writelog("[OK] Apply rights on varnish configuration")
             run('systemctl daemon-reload')
-            Logger.writelog("[OK] Update systemd service")
-            Logger.writelog("[OK] Varnish configurations are applied")
-            service_gestion("varnish", "restart")
+            self.logger.writelog("[OK] Update systemd service")
+            self.logger.writelog("[OK] Varnish configurations are applied")
+            self.services.management("varnish", "restart")
         except BaseException as e:
-            Logger.writelog("[ERROR] while varnish configuration ({error})".format(error=e))
-            if EXITONERROR:
+            self.logger.writelog("[ERROR] while varnish configuration ({error})".format(error=e))
+            if self.exitonerror:
                 print("Error found: {error}".format(error=e))
                 exit(1)

@@ -1,9 +1,6 @@
 #!/usr/bin/env python2.7
 # -*- coding: utf-8 -*-
 
-# Global var
-global Logger, EXITONERROR
-
 # Imports
 import os
 from fabric.api import *
@@ -11,19 +8,20 @@ from libs.transverse import *
 from libs.debian9.system import *
 from libs.debian9.services import *
 from libs.debian9.apache import *
-from libs.debian9.maria import *
+from libs.debian9.maria import  *
 
 
-def deploy_base_lamp():
+def deploy_lamp():
     """ 
     **********************
     * Configuration R4P  *
     **********************
     """
+    CONFR4P = {}
 
     # Directory structure
     PROJECT_ROOT = os.path.dirname(__file__)
-    CONF_ROOT = os.path.join(PROJECT_ROOT, 'lamp-debian9')
+    CONFR4P["CONF_ROOT"] = os.path.join(PROJECT_ROOT, 'lamp-debian9')
     ACTIONS = []
 
     # VM env access
@@ -31,18 +29,21 @@ def deploy_base_lamp():
     env.key_filename = '~/.ssh/id_rsa'
 
     # Log output
-    LOGFILE = "/tmp/logsinstallr4p"
-    Logger = Logs(LOGFILE)
+    CONFR4P["LOGFILE"] = "/tmp/logsinstallr4p"
+    logger = Logs(CONFR4P["LOGFILE"])
+
     # Exit ON error (stop program on error) - True or False (CASE!)
-    EXITONERROR = True
+    CONFR4P["EXITONERROR"] = True
 
     # SYSTEM INFORMATION
     # THIS VALUE ARE USED TO SET THE AUTOMATICS PARAMETERS IN THE SOFTWARES
-    VM_C = {
+    CONFR4P["VM_C"] = {
         "CPU": 4,
         "RAM": 8096
     }
 
+    transverse = Transverse(CONFR4P, logger)
+    system = System(CONFR4P, logger)
     """ 
     **********************
     * Configuration Zone *
@@ -117,12 +118,12 @@ def deploy_base_lamp():
     # NETWORK configuration
     # MUST BE A STRING
     CONF_INTERFACES = {}
-    CONF_INTERFACES["NETWORK_IP"] = "172.16.0.207"
+    CONF_INTERFACES["NETWORK_IP"] = "172.16.0.220"
     CONF_INTERFACES["NETWORK_MASK"] = "255.255.255.0"
     CONF_INTERFACES["NETWORK_GW"] = "172.16.0.254"
     CONF_INTERFACES["mode"] = "static"
     # getinsterfacesname() = Autoselection OR interface name
-    CONF_INTERFACES["DEVISE"] = System.getinsterfacesname()
+    CONF_INTERFACES["DEVISE"] = system.getinsterfacesname()
 
     # USERS configuration
     # MUST BE DICT
@@ -156,10 +157,10 @@ def deploy_base_lamp():
     ACTIONS.extend(LAMP)
     ACTIONS.extend(SOFT)
 
-    CONF_FILE = CONF_ROOT+"/debian9_lamp_basic.ini"
+    CONF_FILE = CONFR4P["CONF_ROOT"]+"/debian9_lamp_basic.ini"
     FILEDIR = "BASE"
 
-    if "MOTD" in ACTIONS: System.conf_dynmotd()
+    if "MOTD" in ACTIONS: system.conf_dynmotd()
 
     files_list = [
         ['/conf/SYSTEM/sources.list', '/etc/apt/sources.list', '0640'],
@@ -177,45 +178,45 @@ def deploy_base_lamp():
     if "VIM" in ACTIONS: files_list.append(
         ['/conf/SYSTEM/defaults.vim', '/usr/share/vim/vim80/defaults.vim', '0644'])
 
-    copyfiles(CONF_ROOT, files_list)
+    transverse.copyfiles(files_list)
 
     # Firewall
-    if "FW" in ACTIONS: System.conf_firewall(PORT_SSH_NUMBER, CONF_INTERFACES)
-    if "SSH" in ACTIONS: System.conf_ssh(PORT_SSH_NUMBER)
-    if "UPGRADE" in ACTIONS: System.upgrade()
-    if "HOSTNAME" in ACTIONS: System.conf_hostname(HOSTNAME)
-    if "HOSTNAME" in ACTIONS: System.conf_hostsfile(HOSTNAME, CONF_INTERFACES["NETWORK_IP"])
-    if "SSHHOSTKEY" in ACTIONS: System.conf_hostkey()
-    if "DNS" in ACTIONS: System.conf_dns(NETWORK_DNS)
+    if "FW" in ACTIONS: system.conf_firewall(PORT_SSH_NUMBER, CONF_INTERFACES)
+    if "SSH" in ACTIONS: system.conf_ssh(PORT_SSH_NUMBER)
+    if "UPGRADE" in ACTIONS: system.upgrade()
+    if "HOSTNAME" in ACTIONS: system.conf_hostname(HOSTNAME)
+    if "HOSTNAME" in ACTIONS: system.conf_hostsfile(HOSTNAME, CONF_INTERFACES["NETWORK_IP"])
+    if "SSHHOSTKEY" in ACTIONS: system.conf_hostkey()
+    if "DNS" in ACTIONS: system.conf_dns(NETWORK_DNS)
 
     """ Add user key """
     if "USERS" in ACTIONS:
         for USER in USERS:
-            System.conf_user(CONF_ROOT, ACTIONS, USER)
+            system.conf_user(ACTIONS, USER)
 
     """ Install packages """
     SERVER_ROLES = ['base', 'additionnal']
     env.roledefs = dict.fromkeys(SERVER_ROLES, [])
-    System.install_packages(CONF_FILE, SERVER_ROLES)
+    system.install_packages(SERVER_ROLES)
 
     """ SSHguard configuration """
     if "SSH" in ACTIONS:
-        System.conf_sshguard(WHITELITSTIPS)
+        system.conf_sshguard(WHITELITSTIPS)
 
     """  Configure postfix """
     if "SMTP" in ACTIONS:
         files_list = [
             ['/conf/POSTFIX/main.cf', '/etc/postfix/main.cf', '0640'],
         ]
-        copyfiles(CONF_ROOT, files_list)
-        System.conf_postfix(HOSTNAME)
+        transverse.copyfiles(files_list)
+        system.conf_postfix(HOSTNAME)
 
     """ Install lamp """
     APACHELISTEN = "0.0.0.0:80"
     SERVER_ROLES = ['http', 'php', 'cache', 'database']
 
     env.roledefs = dict.fromkeys(SERVER_ROLES, [])
-    System.install_packages(CONF_FILE, SERVER_ROLES)
+    system.install_packages(SERVER_ROLES)
 
     """ Configure apache base """
     files_list = [
@@ -235,12 +236,12 @@ def deploy_base_lamp():
             files_list.append(LOGFILE)
 
     if "APACHE" in ACTIONS:
-        copyfiles(CONF_ROOT, files_list)
+        transverse.copyfiles(files_list)
         Apache.conf_general(HOSTNAME, APACHELISTEN)
 
     """ Configure php for apache """
     if "LAMP_BASE" in ACTIONS and "PHP" in ACTIONS:
-        copyfiles(CONF_ROOT, [
+        transverse.copyfiles([
             ['/conf/PHP/7.0/php.ini', '/etc/php/7.0/apache2/php.ini', '0640']
         ])
         Apache.conf_php(VM_C)
@@ -248,7 +249,7 @@ def deploy_base_lamp():
     """ Configure apache vhosts """
     if "VHOSTS" in ACTIONS:
         for VHOST in VHOSTS:
-            Apache.conf_vhost(CONF_ROOT, FILEDIR, APACHELISTEN, VHOST)
+            Apache.conf_vhost(FILEDIR, APACHELISTEN, VHOST)
         Services.management("apache2", "reload")
 
     """ Configure mysql """
@@ -258,12 +259,12 @@ def deploy_base_lamp():
         MariaDB.conf_user("create", db)
 
     if "NETWORK" in ACTIONS:
-        System.conf_interfaces(CONF_ROOT, CONF_INTERFACES)
+        system.conf_interfaces(CONF_INTERFACES)
 
     # END
-    Logger.closefile()
-    with open(LOGFILE, 'r') as searchfile:
+    logger.closefile()
+    with open(CONFR4P["LOGFILE"], 'r') as searchfile:
         for line in searchfile:
             if '[ERROR]' in line or '[INFO]' in line:
                 print(line)
-    print("All logs availables in {logfile}".format(logfile=LOGFILE))
+    print("All logs availables in {logfile}".format(logfile=CONFR4P["LOGFILE"]))

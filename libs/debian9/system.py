@@ -1,5 +1,5 @@
 """
-Class : System
+Class : System functions
 Version : 1
 Author : Tlams
 Revision : 1.0
@@ -7,172 +7,173 @@ Last update : Dec 2017
 """
 
 import ConfigParser
+import os
+import datetime
+from fabric.api import *
+from libs.transverse import *
+from libs.debian9.services import *
+from libs.debian9.apache import *
+from libs.debian9.maria import  *
 
 class System:
+    def __init__(self, confr4p, logger):
+        self.conf_root = confr4p["CONF_ROOT"]
+        self.exitonerror = confr4p["EXITONERROR"]
+        self.logger = logger
+        self.transverse = Transverse(confr4p, logger)
+        self.services = Services(confr4p, logger)
 
     #  SYSTEM  #
     def upgrade(self):
         run("apt-get update")
-        Logger.writelog("[OK] update package database")
+        self.logger.writelog("[OK] update package database")
         run("apt-get upgrade -y")
-        Logger.writelog("[OK] VM upgraded")
-
+        self.logger.writelog("[OK] VM upgraded")
 
     def conf_dns(self, ips):
         run("echo > /etc/resolv.conf")
-        Logger.writelog("[OK] FLush resolv dns file")
+        self.logger.writelog("[OK] FLush resolv dns file")
         for ip in ips:
             run("echo nameserver {dnsip} >> /etc/resolv.conf ".format(dnsip=ip))
-            Logger.writelog("[OK] IP {dnsip} added in resolv file".format(dnsip=ip))
-
+            self.logger.writelog("[OK] IP {dnsip} added in resolv file".format(dnsip=ip))
 
     def conf_hostkey(self):
         try:
             run("/bin/rm -v /etc/ssh/ssh_host_*")
-            Logger.writelog("[OK] Remove old ssh host key")
+            self.logger.writelog("[OK] Remove old ssh host key")
             run("dpkg-reconfigure openssh-server")
-            Logger.writelog("[OK] host ssh key has been updated")
+            self.logger.writelog("[OK] host ssh key has been updated")
         except BaseException as e:
-            Logger.writelog("[ERROR] while update ssh host key {error}".format(error=e))
-            if EXITONERROR:
+            self.logger.writelog("[ERROR] while update ssh host key {error}".format(error=e))
+            if self.exitonerror:
                 print("Error found: {error}".format(error=e))
                 exit(1)
 
-        service_gestion("sshd", "restart")
-
+            self.services.management("sshd", "restart")
 
     def conf_firewall(self, PORT_SSH_NUMBER, CONF_INTERFACES):
-        sedvalue("{PUBLIC_IP}", CONF_INTERFACES["NETWORK_IP"], "/etc/init.d/firewall")
-        Logger.writelog("[OK] Set public IP in firewall file")
-        sedvalue("{PORT_NUMBER}", PORT_SSH_NUMBER, "/etc/init.d/firewall")
-        Logger.writelog("[OK] Set ssh port in firewall file")
+        self.transverse.sedvalue("{PUBLIC_IP}", CONF_INTERFACES["NETWORK_IP"], "/etc/init.d/firewall")
+        self.logger.writelog("[OK] Set public IP in firewall file")
+        self.transverse.sedvalue("{PORT_NUMBER}", PORT_SSH_NUMBER, "/etc/init.d/firewall")
+        self.logger.writelog("[OK] Set ssh port in firewall file")
         try:
             run("bash /etc/init.d/firewall")
-            Logger.writelog("[OK] Apply firewall file)")
+            self.logger.writelog("[OK] Apply firewall file)")
         except BaseException as e:
-            Logger.writelog("[ERROR] in the firewall files: {error}".format(error=e))
-            if EXITONERROR:
+            self.logger.writelog("[ERROR] in the firewall files: {error}".format(error=e))
+            if self.exitonerror:
                 print("Error found: {error}".format(error=e))
                 exit(1)
 
-
     def conf_ssh(self, PORT_SSH_NUMBER):
-        sedvalue("{PORT_NUMBER}", PORT_SSH_NUMBER, "/etc/ssh/sshd_config")
-        Logger.writelog("[OK] Change ssh port")
-        service_gestion("sshd", "restart")
+        self.transverse.sedvalue("{PORT_NUMBER}", PORT_SSH_NUMBER, "/etc/ssh/sshd_config")
+        self.logger.writelog("[OK] Change ssh port")
+        self.services.management("sshd", "restart")
 
     def conf_sshguard(self, ips):
         run("echo > /etc/sshguard/whitelist")
-        Logger.writelog("[OK] Flush whitelist sshguard")
+        self.logger.writelog("[OK] Flush whitelist sshguard")
         for ip in ips:
             run("echo {sshguardip} >> /etc/sshguard/whitelist ".format(sshguardip=ip))
-            Logger.writelog("[OK] New ip added in the sshguard whitelist: {sshguardip} ".format(sshguardip=ip))
-        service_gestion("sshguard.service", "restart")
-
+            self.logger.writelog("[OK] New ip added in the sshguard whitelist: {sshguardip} ".format(sshguardip=ip))
+        self.services.management("sshguard.service", "restart")
 
     def conf_postfix(self, HOSTNAME):
         # No try necessary here
-        sedvalue("{servername}", HOSTNAME, "/etc/postfix/main.cf")
-        Logger.writelog("[OK] Set hostname in postfix file")
-        service_gestion("postfix", "restart")
+        self.transverse.sedvalue("{servername}", HOSTNAME, "/etc/postfix/main.cf")
+        self.logger.writelog("[OK] Set hostname in postfix file")
+        self.services.management("postfix", "restart")
 
-
-    def conf_dynmotd():
+    def conf_dynmotd(self):
         try:
             run('if [ ! -d "/etc/update-motd.d/" ];then mkdir /etc/update-motd.d; chmod +x /etc/update-motd.d; fi')
-            Logger.writelog("[OK] Prepare motd file dir")
+            self.logger.writelog("[OK] Prepare motd file dir")
             run('rm -f /etc/motd')
             run('rm -f /etc/update-motd.d/*')
-            Logger.writelog("[OK] Clean motd existants files")
+            self.logger.writelog("[OK] Clean motd existants files")
             run('ln -sf /var/run/motd.dynamic.new /etc/motd')
-            Logger.writelog("[OK] Set new motd")
-            Logger.writelog("[INFO] You can view this new motd at the new ssh connection")
+            self.logger.writelog("[OK] Set new motd")
+            self.logger.writelog("[INFO] You can view this new motd at the new ssh connection")
         except BaseException as e:
-            Logger.writelog("[ERROR] while motd setting ({error})".format(error=e))
-            if EXITONERROR:
+            self.logger.writelog("[ERROR] while motd setting ({error})".format(error=e))
+            if self.exitonerror:
                 print("Error found: {error}".format(error=e))
                 exit(1)
 
-
-    def conf_user(self, CONF_ROOT, ACTIONS, user):
+    def conf_user(self, ACTIONS, user):
         try:
             run('getent passwd {username}  || adduser {username} --disabled-password --gecos ""'.format(username=user["USER"]))
-            Logger.writelog("[OK] Create the new user {username}".format(username=user["USER"]))
+            self.logger.writelog("[OK] Create the new user {username}".format(username=user["USER"]))
 
             run('echo "{username}:{password}" | chpasswd'.format(username=user["USER"], password=user["PASSWORD"]))
-            Logger.writelog("[OK] Set password for the new user {username}".format(username=user["USER"]))
+            self.logger.writelog("[OK] Set password for the new user {username}".format(username=user["USER"]))
 
             run("mkdir -p /home/{username}/.ssh/".format(username=user["USER"]))
-            Logger.writelog("[OK] Create root dir for new user {username}".format(username=user["USER"]))
+            self.logger.writelog("[OK] Create root dir for new user {username}".format(username=user["USER"]))
 
             run("echo '' > /home/{username}/.ssh/authorized_keys".format(username=user["USER"]))
             for key in user["KEY"]:
                 run("echo {keyv} >> /home/{username}/.ssh/authorized_keys".format(keyv=key, username=user["USER"]))
                 run("chmod 600 -R /home/{username}/.ssh/authorized_keys".format(username=user["USER"]))
 
-            Logger.writelog("[OK] Set ssh keys for {username}".format(username=user["USER"]))
+            self.logger.writelog("[OK] Set ssh keys for {username}".format(username=user["USER"]))
 
             if "USERBASHRC" in ACTIONS:
                 files_list = [
                     ['/conf/SYSTEM/bashrc', '/home/{username}/.bashrc'.format(username=user["USER"]), '0640'],
                     ['/conf/SYSTEM/bash_profile', '/home/{username}/.bash_profile'.format(username=user["USER"]), '0640']
                 ]
-                copyfiles(CONF_ROOT, files_list)
-                Logger.writelog("[OK] Set new bashrc for the new user {username}".format(username=user["USER"]))
+                self.transverse.copyfiles(files_list)
+                self.logger.writelog("[OK] Set new bashrc for the new user {username}".format(username=user["USER"]))
 
             run("chown {username}: -R /home/{username}/".format(username=user["USER"]))
-            Logger.writelog("[OK] Set right for the rootdir to {username}".format(username=user["USER"]))
+            self.logger.writelog("[OK] Set right for the rootdir to {username}".format(username=user["USER"]))
 
         except BaseException as e:
-            Logger.writelog("[ERROR] while  setting new user ({error})".format(error=e))
-            if EXITONERROR:
+            self.logger.writelog("[ERROR] while  setting new user ({error})".format(error=e))
+            if self.exitonerror:
                 print("Error found: {error}".format(error=e))
                 exit(1)
-
 
     def conf_hostname(self, hostname):
         try:
             run("echo {0}> /etc/hostname".format(hostname))
-            Logger.writelog("[OK] Set new hostname for {0})".format(hostname))
-            Logger.writelog("[INFO] To apply this new hostname, you must reboot")
+            self.logger.writelog("[OK] Set new hostname for {0})".format(hostname))
+            self.logger.writelog("[INFO] To apply this new hostname, you must reboot")
         except BaseException as e:
-            Logger.writelog("[ERROR] while hostfile settings ({error})".format(error=e))
-            if EXITONERROR:
+            self.logger.writelog("[ERROR] while hostfile settings ({error})".format(error=e))
+            if self.exitonerror:
                 print("Error found: {error}".format(error=e))
                 exit(1)
-
 
     def conf_hostsfile(self, hostname, ip):
         try:
             run("echo > /etc/hosts")
-            Logger.writelog("[OK] Flush hosts file")
+            self.logger.writelog("[OK] Flush hosts file")
             run("echo 127.0.0.1 localhost >> /etc/hosts")
-            Logger.writelog("[OK] Set localhost in host file")
+            self.logger.writelog("[OK] Set localhost in host file")
             run("echo {0} {1} >> /etc/hosts".format(ip, hostname))
-            Logger.writelog("[OK] Change hostfile with {0} {1})".format(ip, hostname))
+            self.logger.writelog("[OK] Change hostfile with {0} {1})".format(ip, hostname))
         except BaseException as e:
-            Logger.writelog("[ERROR] while hostfile settings ({error})".format(error=e))
-            if EXITONERROR:
+            self.logger.writelog("[ERROR] while hostfile settings ({error})".format(error=e))
+            if self.exitonerror:
                 print("Error found: {error}".format(error=e))
                 exit(1)
 
-
-    def host_type():
+    def host_type(self):
         # No try necessary here
         run('uname -s')
 
-
-    def getinsterfacesname():
+    def getinsterfacesname(self):
         nameint = run("dmesg |grep renamed.*eth|awk -F' ' '{print substr($5,0,length($5)-1)}'")
-        Logger.writelog("[OK] Get interface name {0}".format(nameint))
+        self.logger.writelog("[OK] Get interface name {0}".format(nameint))
         return nameint
 
-
-    def conf_interfaces(self, CONF_ROOT, CONF_INTERFACES):
+    def conf_interfaces(self, CONF_INTERFACES):
         currentdate = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S.%f')
         run("cp /etc/network/interfaces /etc/network/interfaces.{date}".format(date=currentdate))
 
-        copyfiles(CONF_ROOT, [
+        self.transverse.copyfiles([
             ['/conf/changeInterface.awk', '/tmp/changeinterface.awk', '0700'],
             ['/conf/SYSTEM/interfaces', '/etc/network/interfaces', '0600']
         ])
@@ -196,21 +197,22 @@ class System:
             )
         )
 
+    def install_packages(self, roles):
 
-    def install_packages(self, conf_root, roles):
-        config_file = os.path.join(conf_root % env)
+        config_file = os.path.join(self.conf_root % env)
         config = ConfigParser.SafeConfigParser()
+        print(config_file)
         config.read(config_file)
         for role in roles:
             for package in config.get(role, 'packages').split(' '):
                 try:
                     run("apt-get install -y {0}".format(package))
-                    Logger.writelog("[OK] Installation package {package}".format(package=package))
+                    self.logger.writelog("[OK] Installation package {package}".format(package=package))
                 except BaseException as e:
-                    Logger.writelog("[ERROR] Installation package {package} ({error})".format(
+                    self.logger.writelog("[ERROR] Installation package {package} ({error})".format(
                         package=package, error=e
                         )
                     )
-                    if EXITONERROR:
+                    if self.exitonerror:
                         print("Error found: {error}".format(error=e))
                         exit(1)
