@@ -52,7 +52,7 @@ Build your linux LAMP server.
 ## Quick start
 
 ### Limitations
-* Do not use on a existent server in production !
+* Do not use on a existing server in production !
 
 ### Requirement:
 * Linux (Debian 9) server, with full root access

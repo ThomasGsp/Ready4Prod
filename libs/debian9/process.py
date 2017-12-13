@@ -96,8 +96,6 @@ def process(confr4p, params, logger):
         system.conf_postfix()
 
     """ Install lamp """
-
-
     apachelisten = "0.0.0.0:80"
     if "LAMP_BASE" in params['SOFTS']['LAMP']:
         server_roles = ['http', 'php', 'cache', 'database']
@@ -199,6 +197,7 @@ def process(confr4p, params, logger):
             ]
             transverse.copyfiles(files_list)
             hitch.conf_hitch()
+            services.management("hitch", "restart")
 
     if "NETWORK" in params['SOFTS']['BASE']:
         system.conf_interfaces()
