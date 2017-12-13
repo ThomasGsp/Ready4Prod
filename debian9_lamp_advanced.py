@@ -18,8 +18,10 @@ def deploy_lamp():
     # Directory structure
     PROJECT_ROOT = os.path.dirname(__file__)
     CONFR4P["CONF_ROOT"] = os.path.join(PROJECT_ROOT, 'lamp-debian9')
-    CONFR4P["CONF_FILE"] = "debian9_lamp_basic.ini"
-    CONFR4P["FILEDIR"] = "BASE"
+    # INI file
+    CONFR4P["CONF_FILE"] = "debian9_lamp_advanced.ini"
+    # specific dir for files configurations
+    CONFR4P["FILEDIR"] = "ADVANCED"
 
     # VM env access
     env.user = 'root'
@@ -71,9 +73,9 @@ def deploy_lamp():
 
             #  Select lamp type (or keep empty for none installation)
             # LAMP_BASE (Apache, mariadb, phpmod)  OR
-            # LAMP_AVANCED (Apache, mariadb, php-fpm, ssl, varnish)
+            # LAMP_ADVANCED (Apache, mariadb, php-fpm, ssl, varnish)
             # MUST BE A LIST
-            'LAMP': ["LAMP_AVANCED"],
+            'LAMP': ["LAMP_ADVANCED"],
 
             # List: "VHOSTS", "VARNISH", "APACHE", "FPM",  "HITCH", "SSL"
             'EXCLUDES': []

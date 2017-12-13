@@ -28,6 +28,7 @@ def process(confr4p, params, logger):
     services = Services(confr4p, params, logger)
     mariadb = MariaDB(confr4p, params, logger)
 
+
     if "MOTD" in params['SOFTS']['BASE']:
         system.conf_dynmotd()
 
@@ -95,18 +96,16 @@ def process(confr4p, params, logger):
         system.conf_postfix()
 
     """ Install lamp """
-    apachelisten = "0.0.0.0:80"
-    server_roles = ['http', 'php', 'cache', 'database']
-    system.install_packages(server_roles)
 
-    """ Configure apache base """
-    files_list = [
-        ['/conf/APACHE/2.4/ports.conf', '/etc/apache2/ports.conf', '0640'],
-        ['/conf/APACHE/2.4/apache2.conf', '/etc/apache2/apache2.conf', '0640'],
-        ['/conf/APACHE/2.4/sites-available/000-default.conf', '/etc/apache2/sites-available/000-default.conf', '0640'],
-        ['/conf/APACHE/2.4/conf-available/security.conf', '/etc/apache2/conf-available/security.conf', '0640'],
-        ['/conf/APACHE/2.4/conf-available/badbot.conf', '/etc/apache2/conf-available/badbot.conf', '0640'],
-    ]
+
+    apachelisten = "0.0.0.0:80"
+    if "LAMP_BASE" in params['SOFTS']['LAMP']:
+        server_roles = ['http', 'php', 'cache', 'database']
+    elif "LAMP_ADVANCED" in params['SOFTS']['LAMP']:
+        apachelisten = "127.0.0.1:8080"
+        server_roles = ['http', 'php', 'cache', 'database', 'ssl']
+
+    system.install_packages(server_roles)
 
     if "LOGS" in params['SOFTS']['BASE']:
         transverse.copyfiles([
@@ -115,6 +114,15 @@ def process(confr4p, params, logger):
         ])
 
     if "APACHE" not in params['SOFTS']['EXCLUDES']:
+        """ Configure apache base """
+        files_list = [
+            ['/conf/APACHE/2.4/ports.conf', '/etc/apache2/ports.conf', '0640'],
+            ['/conf/APACHE/2.4/apache2.conf', '/etc/apache2/apache2.conf', '0640'],
+            ['/conf/APACHE/2.4/sites-available/000-default.conf', '/etc/apache2/sites-available/000-default.conf',
+             '0640'],
+            ['/conf/APACHE/2.4/conf-available/security.conf', '/etc/apache2/conf-available/security.conf', '0640'],
+            ['/conf/APACHE/2.4/conf-available/badbot.conf', '/etc/apache2/conf-available/badbot.conf', '0640'],
+        ]
         transverse.copyfiles(files_list)
         apache.conf_general(apachelisten)
 

@@ -18,7 +18,9 @@ def deploy_lamp():
     # Directory structure
     PROJECT_ROOT = os.path.dirname(__file__)
     CONFR4P["CONF_ROOT"] = os.path.join(PROJECT_ROOT, 'lamp-debian9')
+    # INI file
     CONFR4P["CONF_FILE"] = "debian9_lamp_basic.ini"
+    # specific dir for files configurations
     CONFR4P["FILEDIR"] = "BASE"
 
     # VM env access
