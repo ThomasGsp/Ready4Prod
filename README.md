@@ -189,7 +189,7 @@ git clone git@github.com:ThomasGsp/Ready4Prod.git
 
 ### Play Fabric's file:
 ``` bash
-fab -f install_packages.py deploy_base_lamp -H <ip_srv>
+fab -f debian9_lamp_(base | advanced).py deploy_lamp -H <ip_srv>
 ```
 
 
