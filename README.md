@@ -202,7 +202,7 @@ fab -f install_packages.py deploy_base_lamp -H <ip_srv>
 #### motd
 ![motd](./img/lamp_base_motd.png)
 #### netstat (base lamp)
-![netstat](./img/lamp_base_netstat.png)
+![netstat](./img/advanced.png)
 
 
 ##### External sources:
