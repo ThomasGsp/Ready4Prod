@@ -23,7 +23,7 @@ class Varnish:
 
     def conf_varnish(self):
         try:
-            ramalloc = int(self.params['VM']['RAM'] / 4)
+            ramalloc = int(self.params['HARDWARE']['VM']['RAM'] / 4)
             run('rm /etc/varnish/default.vcl')
             self.logger.writelog("[OK] Clean old varnish configuration")
             run('ln -sf /etc/varnish/production.vcl /etc/varnish/default.vcl')

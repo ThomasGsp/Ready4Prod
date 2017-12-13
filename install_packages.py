@@ -610,7 +610,7 @@ def confhitch(VM_C):
 def upgrade():
     run("apt-get update")
     Logger.writelog("[OK] update package database")
-    run("apt-get upgrade -y")
+    run("DEBIAN_FRONTEND=noninteractive apt-get upgrade -y")
     Logger.writelog("[OK] VM upgraded")
 
 
@@ -800,7 +800,7 @@ def install_packages(conf_root, roles):
     for role in roles:
         for package in config.get(role, 'packages').split(' '):
             try:
-                run("apt-get install -y {0}".format(package))
+                run("DEBIAN_FRONTEND=noninteractive apt-get install -y {0}".format(package))
                 Logger.writelog("[OK] Installation package {package}".format(package=package))
             except BaseException as e:
                 Logger.writelog("[ERROR] Installation package {package} ({error})".format(

@@ -15,7 +15,7 @@ class MariaDB:
     def __init__(self, confr4p, params, logger):
         self.confr4p = confr4p
         self.params = params
-        self.Logger = logger
+        self.logger = logger
         self.transverse = Transverse(confr4p, params, logger)
         self.services = Services(confr4p, params, logger)
 

@@ -51,9 +51,9 @@ class System:
             self.services.management("sshd", "restart")
 
     def conf_firewall(self):
-        self.transverse.sedvalue("{PUBLIC_IP}", self.params['CONF_INTERFACES']["NETWORK_IP"], "/etc/init.d/firewall")
+        self.transverse.sedvalue("{PUBLIC_IP}", self.params['CONF']['CONF_INTERFACES'][0]["NETWORK_IP"], "/etc/init.d/firewall")
         self.logger.writelog("[OK] Set public IP in firewall file")
-        self.transverse.sedvalue("{PORT_NUMBER}", self.params['PORT_SSH_NUMBER'], "/etc/init.d/firewall")
+        self.transverse.sedvalue("{PORT_NUMBER}", self.params['CONF']['PORT_SSH_NUMBER'], "/etc/init.d/firewall")
         self.logger.writelog("[OK] Set ssh port in firewall file")
         try:
             run("bash /etc/init.d/firewall")
@@ -65,7 +65,7 @@ class System:
                 exit(1)
 
     def conf_ssh(self):
-        self.transverse.sedvalue("{PORT_NUMBER}", self.params['PORT_SSH_NUMBER'], "/etc/ssh/sshd_config")
+        self.transverse.sedvalue("{PORT_NUMBER}", self.params['CONF']['PORT_SSH_NUMBER'], "/etc/ssh/sshd_config")
         self.logger.writelog("[OK] Change ssh port")
         self.services.management("sshd", "restart")
 
@@ -152,8 +152,8 @@ class System:
             self.logger.writelog("[OK] Flush hosts file")
             run("echo 127.0.0.1 localhost >> /etc/hosts")
             self.logger.writelog("[OK] Set localhost in host file")
-            run("echo {0} {1} >> /etc/hosts".format(self.params['CONF']['CONF_INTERFACES']["NETWORK_IP"], self.params['CONF']['HOSTNAME']))
-            self.logger.writelog("[OK] Change hostfile with {0} {1})".format(self.params['CONF']['CONF_INTERFACES']["NETWORK_IP"], self.params['CONF']['HOSTNAME']))
+            run("echo {0} {1} >> /etc/hosts".format(self.params['CONF']['CONF_INTERFACES'][0]["NETWORK_IP"], self.params['CONF']['HOSTNAME']))
+            self.logger.writelog("[OK] Change hostfile with {0} {1})".format(self.params['CONF']['CONF_INTERFACES'][0]["NETWORK_IP"], self.params['CONF']['HOSTNAME']))
         except BaseException as e:
             self.logger.writelog("[ERROR] while hostfile settings ({error})".format(error=e))
             if self.confr4p['EXITONERROR']:
@@ -188,12 +188,12 @@ class System:
             "gateway={gateway} "
             ">> /etc/network/interfaces"
             "".format(
-                device=self.params['CONF']['CONF_INTERFACES']["DEVISE"],
-                mode=self.params['CONF']['CONF_INTERFACES']["MODE"],
+                device=self.params['CONF']['CONF_INTERFACES'][0]["DEVISE"],
+                mode=self.params['CONF']['CONF_INTERFACES'][0]["MODE"],
                 action="add",
-                address=self.params['CONF']['CONF_INTERFACES']["NETWORK_IP"],
-                netmask=self.params['CONF']['CONF_INTERFACES']["NETWORK_MASK"],
-                gateway=self.params['CONF']['CONF_INTERFACES']["NETWORK_GW"]
+                address=self.params['CONF']['CONF_INTERFACES'][0]["NETWORK_IP"],
+                netmask=self.params['CONF']['CONF_INTERFACES'][0]["NETWORK_MASK"],
+                gateway=self.params['CONF']['CONF_INTERFACES'][0]["NETWORK_GW"]
             )
         )
 

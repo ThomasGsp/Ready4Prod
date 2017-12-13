@@ -22,7 +22,7 @@ class Fpm:
         self.services = Services(confr4p, params, logger)
 
     def conf_fpm(self):
-        ramalloc = int(self.params['VM']['RAM'] / 8)
+        ramalloc = int(self.params['HARDWARE']['VM']['RAM'] / 8)
         if ramalloc > 256:
             ramalloc = 256
         self.transverse.sedvalue("{RAMALLOC}", ramalloc, "/etc/php/7.0/fpm/php.ini")

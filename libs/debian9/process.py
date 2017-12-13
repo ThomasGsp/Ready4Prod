@@ -195,7 +195,7 @@ def process(confr4p, params, logger):
     if "NETWORK" in params['SOFTS']['BASE']:
         system.conf_interfaces()
 
-    #  END
+    # END
     logger.closefile()
     with open(confr4p["LOGFILE"], 'r') as searchfile:
         for line in searchfile:

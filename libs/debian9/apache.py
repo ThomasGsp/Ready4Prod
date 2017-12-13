@@ -36,7 +36,7 @@ class Apache:
         self.services.management("apache2", "restart")
 
     def conf_php(self):
-        ramalloc = int(self.params['VM']['RAM'] / 8)
+        ramalloc = int(self.params['HARDWARE']['VM']['RAM'] / 8)
         if ramalloc > 256:
             ramalloc = 256
         self.transverse.sedvalue("{RAMALLOC}", ramalloc, "/etc/php/7.0/apache2/php.ini")

@@ -24,7 +24,7 @@ class Hitch:
 
     def conf_hitch(self):
         try:
-            cpualloc = int(self.params['VM']['CPU'] / 2) + (self.params['VM']['CPU'] % 2 > 0)
+            cpualloc = int(self.params['HARDWARE']['VM']['CPU'] / 2) + (self.params['HARDWARE']['VM']['CPU'] % 2 > 0)
             self.transverse.sedvalue("{CPUALLOC}", cpualloc, "/etc/default/varnish")
             run('chown _hitch:_hitch -R /etc/hitch/')
             self.logger.writelog("[OK] Hitch configurations are applied")
