@@ -48,6 +48,7 @@ Build your linux LAMP server.
 ###### Nexts features / bug patch
 * Improve MariaDB config
 * Improve PHP7 config
+* Multiple network interfaces
 
 ## Quick start
 
