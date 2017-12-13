@@ -8,18 +8,16 @@ Last update : Dec 2017
 import os
 from fabric.api import *
 from libs.transverse import *
-from libs.debian9.system import *
 from libs.debian9.services import *
-from libs.debian9.apache import *
 
 
 class MariaDB:
-    def __init__(self, confr4p, logger):
-        self.conf_root = confr4p["CONF_ROOT"]
-        self.exitonerror = confr4p["EXITONERROR"]
-        self.logger = logger
-        self.transverse = self.transverse(confr4p, logger)
-        self.services = self.services(confr4p, logger)
+    def __init__(self, confr4p, params, logger):
+        self.confr4p = confr4p
+        self.params = params
+        self.Logger = logger
+        self.transverse = Transverse(confr4p, params, logger)
+        self.services = Services(confr4p, params, logger)
 
     def conf_init(self):
         try:
@@ -30,7 +28,7 @@ class MariaDB:
             self.logger.writelog("[OK] Mysql clean installation")
         except BaseException as e:
             self.logger.writelog("[ERROR] Mysql execution error ({error})".format(error=e))
-            if self.exitonerror:
+            if self.confr4p['EXITONERROR']:
                 print("Error found: {error}".format(error=e))
                 exit(1)
 
@@ -47,7 +45,7 @@ class MariaDB:
             self.logger.writelog("[OK] Apply mysql USERS privileges )".format(username=value["username"]))
         except BaseException as e:
             self.logger.writelog("[ERROR] Mysql execution error ({error})".format(error=e))
-            if self.exitonerror:
+            if self.confr4p['EXITONERROR']:
                 print("Error found: {error}".format(error=e))
                 exit(1)
 
@@ -61,6 +59,6 @@ class MariaDB:
                 self.logger.writelog("[OK] DROP database {dbname};".format(dbname=value["database"]))
         except BaseException as e:
             self.logger.writelog("[ERROR] Mysql execution error ({error})".format(error=e))
-            if self.exitonerror:
+            if self.confr4p['EXITONERROR']:
                 print("Error found: {error}".format(error=e))
                 exit(1)

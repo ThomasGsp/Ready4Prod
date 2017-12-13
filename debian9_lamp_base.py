@@ -1,14 +1,8 @@
 #!/usr/bin/env python2.7
 # -*- coding: utf-8 -*-
 
-# Imports
-import os
-from fabric.api import *
-from libs.transverse import *
 from libs.debian9.system import *
-from libs.debian9.services import *
-from libs.debian9.apache import *
-from libs.debian9.maria import  *
+from libs.debian9.process import *
 
 
 def deploy_lamp():
@@ -17,12 +11,15 @@ def deploy_lamp():
     * Configuration R4P  *
     **********************
     """
+    # Just init var, do not change
+    PARAMS = {}
     CONFR4P = {}
 
     # Directory structure
     PROJECT_ROOT = os.path.dirname(__file__)
     CONFR4P["CONF_ROOT"] = os.path.join(PROJECT_ROOT, 'lamp-debian9')
-    ACTIONS = []
+    CONFR4P["CONF_FILE"] = "debian9_lamp_basic.ini"
+    CONFR4P["FILEDIR"] = "BASE"
 
     # VM env access
     env.user = 'root'
@@ -30,33 +27,33 @@ def deploy_lamp():
 
     # Log output
     CONFR4P["LOGFILE"] = "/tmp/logsinstallr4p"
-    logger = Logs(CONFR4P["LOGFILE"])
 
     # Exit ON error (stop program on error) - True or False (CASE!)
     CONFR4P["EXITONERROR"] = True
 
-    # SYSTEM INFORMATION
-    # THIS VALUE ARE USED TO SET THE AUTOMATICS PARAMETERS IN THE SOFTWARES
-    CONFR4P["VM_C"] = {
-        "CPU": 4,
-        "RAM": 8096
-    }
-
-    transverse = Transverse(CONFR4P, logger)
+    logger = Logs(CONFR4P["LOGFILE"])
     system = System(CONFR4P, logger)
+
     """ 
     **********************
     * Configuration Zone *
     **********************
     """
+
+    # SYSTEM INFORMATION
+    # THIS VALUE ARE USED TO SET THE AUTOMATICS PARAMETERS IN THE SOFTWARES
+    PARAMS['HARDWARE']['VM'] = {
+        "CPU": 2,
+        "RAM": 8096
+    }
+
     # Composants list:
     # You have the possibility to select specifics composants
     # UPGRADE, HOSTNAME, SSHHOSTKEY, DNS, USERBASHRC,
     # NETWORK, MOTD ,FW ( Firewall), VIM (Vim configuration)
     # SSH (sshd + sshguard), SMTP (postfix conf), LOGS, USERS
     # MUST BE A LIST
-
-    BASE = [
+    PARAMS['SOFTS']['BASE'] = [
         "UPGRADE", "HOSTNAME",
         "SSHHOSTKEY", "DNS",
         "USERBASHRC", "NETWORK",
@@ -70,19 +67,14 @@ def deploy_lamp():
     # LAMP_BASE (Apache, mariadb, phpmod)  OR
     # LAMP_AVANCED (Apache, mariadb, php-fpm, ssl, varnish)
     # MUST BE A LIST
-    LAMP = ["LAMP_BASE"]
+    PARAMS['SOFTS']['LAMP'] = ["LAMP_BASE"]
 
-    # List: "VHOSTS", "VARNISH", "APACHE", "PHP",  "HITCH", "SSL"
-
-    SOFT = [
-        "VHOSTS",
-        "APACHE",
-        "PHP",
-    ]
+    # List: "VHOSTS", "VARNISH", "APACHE", "FPM",  "HITCH", "SSL"
+    PARAMS['SOFTS']['EXCLUDES'] = []
 
     # VHOSTS configuration
     #  MUST BE A DICT
-    VHOSTS = \
+    PARAMS['CONF']['VHOSTS'] = \
         [
             {
                 # Main domain name
@@ -101,33 +93,37 @@ def deploy_lamp():
 
     # DNS Servers
     # MUST BE A LIST
-    NETWORK_DNS = ["208.67.222.222", "8.8.8.8"]
+    PARAMS['CONF']['NETWORK_DNS'] = ["208.67.222.222", "8.8.8.8"]
 
     # VM HOSTNAME
     # MUST BE A STRING
-    HOSTNAME = "prdweb01"
+    PARAMS['CONF']['HOSTNAME'] = "prdweb01"
 
     # SSH PORT
     # MUST BE A STRING
-    PORT_SSH_NUMBER = "22"
+    PARAMS['CONF']['PORT_SSH_NUMBER'] = "22"
 
     # GENERAL WHITELIST IP (SSH, FIREWALL, SOFT...)
     # MUST BE A LIST
-    WHITELITSTIPS = ["192.168.1.1", "172.16.10.5", "127.0.0.1"]
+    PARAMS['CONF']['WHITELITSTIPS'] = ["192.168.1.1", "172.16.10.5", "127.0.0.1"]
 
     # NETWORK configuration
-    # MUST BE A STRING
-    CONF_INTERFACES = {}
-    CONF_INTERFACES["NETWORK_IP"] = "172.16.0.220"
-    CONF_INTERFACES["NETWORK_MASK"] = "255.255.255.0"
-    CONF_INTERFACES["NETWORK_GW"] = "172.16.0.254"
-    CONF_INTERFACES["mode"] = "static"
-    # getinsterfacesname() = Autoselection OR interface name
-    CONF_INTERFACES["DEVISE"] = system.getinsterfacesname()
+    # MUST BE A DICT
+    PARAMS['CONF']['CONF_INTERFACES'] = [
+        {
+            "NETWORK_IP": "172.16.0.220",
+            "NETWORK_MASK": "255.255.255.0",
+            "NETWORK_GW": "172.16.0.254",
+            "MODE": "static",
+            "DEVISE": system.getinsterfacesname()
+            # getinsterfacesname() = Autoselection OR interface name
+        }
+    ]
+
 
     # USERS configuration
     # MUST BE DICT
-    USERS = \
+    PARAMS['CONF']['USERS'] = \
         [
             {
                 "USER": "prod",
@@ -137,7 +133,7 @@ def deploy_lamp():
     ]
 
     # Mysql users and databases configurations
-    MYSQL_CONF = \
+    PARAMS['CONF']['MYSQL_CONF'] = \
         [
             {
                 "username": "produser",
@@ -146,125 +142,8 @@ def deploy_lamp():
             }
         ]
 
+    # main task, do not change
+    process(CONFR4P, PARAMS, logger)
 
 
-    """ 
-    ************
-    * Proccess *
-    ************
-    """
-    ACTIONS.extend(BASE)
-    ACTIONS.extend(LAMP)
-    ACTIONS.extend(SOFT)
 
-    CONF_FILE = CONFR4P["CONF_ROOT"]+"/debian9_lamp_basic.ini"
-    FILEDIR = "BASE"
-
-    if "MOTD" in ACTIONS: system.conf_dynmotd()
-
-    files_list = [
-        ['/conf/SYSTEM/sources.list', '/etc/apt/sources.list', '0640'],
-        ['/conf/SYSTEM/cpb.bash', '/usr/local/bin/cpb', '0755'],
-        ['/conf/SYSTEM/bash_profile', '/root/.bash_profile', '0640'],
-        ['/conf/SYSTEM/motd.bash', '/etc/update-motd.d/10-sysinfo', '0755'],
-    ]
-
-    if "USERBASHRC" in ACTIONS: files_list.append(
-        ['/conf/SYSTEM/bashrc', '/root/.bashrc', '0640'])
-    if "SSH" in ACTIONS: files_list.append(
-        ['/conf/SYSTEM/sshd_config', '/etc/ssh/sshd_config', '0640'])
-    if "FW" in ACTIONS: files_list.append(
-        ['/conf/SYSTEM/firewall.sh', '/etc/init.d/firewall', '0740'])
-    if "VIM" in ACTIONS: files_list.append(
-        ['/conf/SYSTEM/defaults.vim', '/usr/share/vim/vim80/defaults.vim', '0644'])
-
-    transverse.copyfiles(files_list)
-
-    # Firewall
-    if "FW" in ACTIONS: system.conf_firewall(PORT_SSH_NUMBER, CONF_INTERFACES)
-    if "SSH" in ACTIONS: system.conf_ssh(PORT_SSH_NUMBER)
-    if "UPGRADE" in ACTIONS: system.upgrade()
-    if "HOSTNAME" in ACTIONS: system.conf_hostname(HOSTNAME)
-    if "HOSTNAME" in ACTIONS: system.conf_hostsfile(HOSTNAME, CONF_INTERFACES["NETWORK_IP"])
-    if "SSHHOSTKEY" in ACTIONS: system.conf_hostkey()
-    if "DNS" in ACTIONS: system.conf_dns(NETWORK_DNS)
-
-    """ Add user key """
-    if "USERS" in ACTIONS:
-        for USER in USERS:
-            system.conf_user(ACTIONS, USER)
-
-    """ Install packages """
-    SERVER_ROLES = ['base', 'additionnal']
-    env.roledefs = dict.fromkeys(SERVER_ROLES, [])
-    system.install_packages(SERVER_ROLES)
-
-    """ SSHguard configuration """
-    if "SSH" in ACTIONS:
-        system.conf_sshguard(WHITELITSTIPS)
-
-    """  Configure postfix """
-    if "SMTP" in ACTIONS:
-        files_list = [
-            ['/conf/POSTFIX/main.cf', '/etc/postfix/main.cf', '0640'],
-        ]
-        transverse.copyfiles(files_list)
-        system.conf_postfix(HOSTNAME)
-
-    """ Install lamp """
-    APACHELISTEN = "0.0.0.0:80"
-    SERVER_ROLES = ['http', 'php', 'cache', 'database']
-
-    env.roledefs = dict.fromkeys(SERVER_ROLES, [])
-    system.install_packages(SERVER_ROLES)
-
-    """ Configure apache base """
-    files_list = [
-        ['/conf/APACHE/2.4/ports.conf', '/etc/apache2/ports.conf', '0640'],
-        ['/conf/APACHE/2.4/apache2.conf', '/etc/apache2/apache2.conf', '0640'],
-        ['/conf/APACHE/2.4/sites-available/000-default.conf', '/etc/apache2/sites-available/000-default.conf', '0640'],
-        ['/conf/APACHE/2.4/conf-available/security.conf', '/etc/apache2/conf-available/security.conf', '0640'],
-        ['/conf/APACHE/2.4/conf-available/badbot.conf', '/etc/apache2/conf-available/badbot.conf', '0640'],
-    ]
-
-    if "LOGS" in ACTIONS:
-        LOGFILES = [
-            ['/conf/LOGROTATE/apache2.conf', '/etc/logrotate.d/apache2', '0640'],
-            ['/conf/RSYSLOG/apache2.conf', '/etc/rsyslog.d/10-apache.conf', '0640']
-        ]
-        for LOGFILE in LOGFILES:
-            files_list.append(LOGFILE)
-
-    if "APACHE" in ACTIONS:
-        transverse.copyfiles(files_list)
-        Apache.conf_general(HOSTNAME, APACHELISTEN)
-
-    """ Configure php for apache """
-    if "LAMP_BASE" in ACTIONS and "PHP" in ACTIONS:
-        transverse.copyfiles([
-            ['/conf/PHP/7.0/php.ini', '/etc/php/7.0/apache2/php.ini', '0640']
-        ])
-        Apache.conf_php(VM_C)
-
-    """ Configure apache vhosts """
-    if "VHOSTS" in ACTIONS:
-        for VHOST in VHOSTS:
-            Apache.conf_vhost(FILEDIR, APACHELISTEN, VHOST)
-        Services.management("apache2", "reload")
-
-    """ Configure mysql """
-    MariaDB.conf_init()
-    for db in MYSQL_CONF:
-        MariaDB.conf_base("create", db)
-        MariaDB.conf_user("create", db)
-
-    if "NETWORK" in ACTIONS:
-        system.conf_interfaces(CONF_INTERFACES)
-
-    # END
-    logger.closefile()
-    with open(CONFR4P["LOGFILE"], 'r') as searchfile:
-        for line in searchfile:
-            if '[ERROR]' in line or '[INFO]' in line:
-                print(line)
-    print("All logs availables in {logfile}".format(logfile=CONFR4P["LOGFILE"]))

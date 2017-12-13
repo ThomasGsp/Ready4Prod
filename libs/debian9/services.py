@@ -11,9 +11,8 @@ from fabric.api import *
 
 class Services:
 
-    def __init__(self, confr4p, logger):
-        self.conf_root = confr4p["CONF_ROOT"]
-        self.exitonerror = confr4p["EXITONERROR"]
+    def __init__(self, confr4p, params, logger):
+        self.confr4p = confr4p
         self.logger = logger
 
     def management(self, service, action):
@@ -24,6 +23,6 @@ class Services:
                 actiontype=action, servicename=service, error=e
                 )
             )
-            if self.exitonerror:
+            if self.confr4p['EXITONERROR']:
                 print("Error found: {error}".format(error=e))
                 exit(1)

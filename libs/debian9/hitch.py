@@ -10,31 +10,27 @@ Last update : Dec 2017
 import os
 from fabric.api import *
 from libs.transverse import *
-from libs.debian9.system import *
 from libs.debian9.services import *
-from libs.debian9.apache import *
-from libs.debian9.maria import  *
 
 
 class Hitch:
 
-    def __init__(self, confr4p, logger):
-        self.conf_root = confr4p["CONF_ROOT"]
-        self.exitonerror = confr4p["EXITONERROR"]
+    def __init__(self, confr4p, params, logger):
+        self.confr4p = confr4p
+        self.params = params
         self.logger = logger
-        self.transverse = self.transverse(confr4p, logger)
-        self.services = self.services(confr4p, logger)
+        self.transverse = Transverse(confr4p, params, logger)
+        self.services = Services(confr4p, params, logger)
 
-
-    def conf_hitch(self, VM_C):
+    def conf_hitch(self):
         try:
-            cpualloc = int(VM_C['CPU'] / 2) + (VM_C['CPU'] % 2 > 0)
+            cpualloc = int(self.params['VM']['CPU'] / 2) + (self.params['VM']['CPU'] % 2 > 0)
             self.transverse.sedvalue("{CPUALLOC}", cpualloc, "/etc/default/varnish")
             run('chown _hitch:_hitch -R /etc/hitch/')
             self.logger.writelog("[OK] Hitch configurations are applied")
         except BaseException as e:
             self.logger.writelog("[ERROR] while Hitch configuration ({error})".format(error=e))
-            if self.exitonerror:
+            if self.confr4p['EXITONERROR']:
                 print("Error found: {error}".format(error=e))
                 exit(1)
 

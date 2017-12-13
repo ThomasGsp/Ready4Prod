@@ -9,24 +9,21 @@ Last update : Dec 2017
 import os
 from fabric.api import *
 from libs.transverse import *
-from libs.debian9.system import *
 from libs.debian9.services import *
-from libs.debian9.apache import *
-from libs.debian9.maria import  *
 
 
 class Varnish:
 
-    def __init__(self, confr4p, logger):
+    def __init__(self, confr4p, params, logger):
         self.confr4p = confr4p
-        self.exitonerror = confr4p["EXITONERROR"]
+        self.params = params
         self.logger = logger
-        self.transverse = self.transverse(confr4p, logger)
-        self.services = self.services(confr4p, logger)
+        self.transverse = Transverse(confr4p, params, logger)
+        self.services = Services(confr4p, params, logger)
 
     def conf_varnish(self):
         try:
-            ramalloc = int(self.confr4p['VM_C']['RAM'] / 4)
+            ramalloc = int(self.params['VM']['RAM'] / 4)
             run('rm /etc/varnish/default.vcl')
             self.logger.writelog("[OK] Clean old varnish configuration")
             run('ln -sf /etc/varnish/production.vcl /etc/varnish/default.vcl')
@@ -40,6 +37,6 @@ class Varnish:
             self.services.management("varnish", "restart")
         except BaseException as e:
             self.logger.writelog("[ERROR] while varnish configuration ({error})".format(error=e))
-            if self.exitonerror:
+            if self.confr4p['EXITONERROR']:
                 print("Error found: {error}".format(error=e))
                 exit(1)

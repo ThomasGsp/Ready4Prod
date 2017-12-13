@@ -11,9 +11,9 @@ from fabric.api import *
 
 class Transverse:
 
-    def __init__(self, confr4p, logger):
-        self.conf_root = confr4p["CONF_ROOT"]
-        self.exitonerror = confr4p["EXITONERROR"]
+    def __init__(self, confr4p, params, logger):
+        self.confr4p = confr4p
+        self.params = params
         self.Logger = logger
 
     def sedvalue(self, str_src, str_dest, conf_file):
@@ -28,22 +28,22 @@ class Transverse:
             self.Logger.writelog("[ERROR] Sed {src_string}, to {dest_string}, in {filedir} ({error})".format(
                 src_string=str_src, dest_string=str_dest, filedir=conf_file, error=e
             ))
-            if self.exitonerror:
+            if self.confr4p['EXITONERROR']:
                 print("Error found: {error}".format(error=e))
                 exit(1)
 
     def copyfiles(self, files_list):
         for file in files_list:
             try:
-                put(self.conf_root+file[0], file[1], mode=file[2])
+                put(self.confr4p['CONF_ROOT']+file[0], file[1], mode=file[2])
                 self.Logger.writelog("[OK] Copy {srcfile}, to {destfile}, with chmod {chmod}".format(
-                    srcfile=self.conf_root+file[0], destfile=file[1], chmod=file[2]
+                    srcfile=self.confr4p['CONF_ROOT']+file[0], destfile=file[1], chmod=file[2]
                     ))
             except BaseException as e:
                 self.Logger.writelog("[ERROR] Copy {srcfile}, to {destfile}, with chmod {chmod} ({error})".format(
-                    srcfile=self.conf_root+file[0], destfile=file[1], chmod=file[2], error=e
+                    srcfile=self.confr4p['CONF_ROOT']+file[0], destfile=file[1], chmod=file[2], error=e
                     ))
-                if self.exitonerror:
+                if self.confr4p['EXITONERROR']:
                     print("Error found: {error}".format(error=e))
                     exit(1)
 
