@@ -24,9 +24,9 @@ class System:
 
     #  SYSTEM  #
     def upgrade(self):
-        run("apt-get update")
+        run("DEBIAN_FRONTEND=noninteractive apt-get update")
         self.logger.writelog("[OK] update package database")
-        run("apt-get upgrade -y")
+        run("DEBIAN_FRONTEND=noninteractive apt-get upgrade -y")
         self.logger.writelog("[OK] VM upgraded")
 
     def conf_dns(self):
@@ -205,7 +205,7 @@ class System:
         for role in roles:
             for package in config.get(role, 'packages').split(' '):
                 try:
-                    run("apt-get install -y {0}".format(package))
+                    run("DEBIAN_FRONTEND=noninteractive apt-get install -y {0}".format(package))
                     self.logger.writelog("[OK] Installation package {package}".format(package=package))
                 except BaseException as e:
                     self.logger.writelog("[ERROR] Installation package {package} ({error})".format(
