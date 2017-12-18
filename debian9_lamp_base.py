@@ -48,7 +48,7 @@ def deploy_lamp():
         {
             'VM': {
                 "CPU": 2,
-                "RAM": 8096
+                "RAM": 4096
             }
         }
 

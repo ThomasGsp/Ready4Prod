@@ -47,8 +47,8 @@ def deploy_lamp():
     PARAMS['HARDWARE'] = \
         {
             'VM': {
-                "CPU": 2,
-                "RAM": 8096
+                "CPU": 4,
+                "RAM": 8192
             }
         }
 
@@ -124,7 +124,7 @@ def deploy_lamp():
             'CONF_INTERFACES':
                 [
                     {
-                        "NETWORK_IP": "172.16.0.220",
+                        "NETWORK_IP": "172.16.0.221",
                         "NETWORK_MASK": "255.255.255.0",
                         "NETWORK_GW": "172.16.0.254",
                         "MODE": "static",
