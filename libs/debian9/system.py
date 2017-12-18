@@ -24,7 +24,7 @@ class System:
 
     #  SYSTEM  #
     def upgrade(self):
-        run("DEBIAN_FRONTEND=noninteractive apt-get update")
+        run("apt-get update")
         self.logger.writelog("[OK] update package database")
         run("DEBIAN_FRONTEND=noninteractive apt-get upgrade -y")
         self.logger.writelog("[OK] VM upgraded")
