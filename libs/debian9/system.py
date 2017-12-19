@@ -56,7 +56,7 @@ class System:
         self.transverse.sedvalue("{PORT_NUMBER}", self.params['CONF']['PORT_SSH_NUMBER'], "/etc/init.d/firewall")
         self.logger.writelog("[OK] Set ssh port in firewall file")
         try:
-            run("bash /etc/init.d/firewall")
+            run("bash /etc/init.d/firewall &")
             self.logger.writelog("[OK] Apply firewall file)")
         except BaseException as e:
             self.logger.writelog("[ERROR] in the firewall files: {error}".format(error=e))
