@@ -165,7 +165,7 @@ class System:
         run('uname -s')
 
     def getinsterfacesname(self):
-        nameint = run("dmesg |grep renamed.*eth|awk -F' ' '{print substr($5,0,length($5)-1)}'")
+        nameint = run("dmesg |grep renamed.*eth|awk -F' ' '{print substr($5,0,length($5))}'")
         self.logger.writelog("[OK] Get interface name {0}".format(nameint))
         return nameint
 
