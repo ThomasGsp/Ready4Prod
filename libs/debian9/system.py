@@ -26,7 +26,7 @@ class System:
     def upgrade(self):
         run("apt-get update")
         self.logger.writelog("[OK] update package database")
-        run("apt-get upgrade -y")
+        run("DEBIAN_FRONTEND=noninteractive apt-get upgrade -y")
         self.logger.writelog("[OK] VM upgraded")
 
     def conf_dns(self):
@@ -56,7 +56,7 @@ class System:
         self.transverse.sedvalue("{PORT_NUMBER}", self.params['CONF']['PORT_SSH_NUMBER'], "/etc/init.d/firewall")
         self.logger.writelog("[OK] Set ssh port in firewall file")
         try:
-            run("bash /etc/init.d/firewall")
+            run("bash /etc/init.d/firewall &")
             self.logger.writelog("[OK] Apply firewall file)")
         except BaseException as e:
             self.logger.writelog("[ERROR] in the firewall files: {error}".format(error=e))
@@ -165,7 +165,7 @@ class System:
         run('uname -s')
 
     def getinsterfacesname(self):
-        nameint = run("dmesg |grep renamed.*eth|awk -F' ' '{print substr($5,0,length($5)-1)}'")
+        nameint = run("dmesg |grep renamed.*eth|awk -F' ' '{print substr($5,0,length($5))}'")
         self.logger.writelog("[OK] Get interface name {0}".format(nameint))
         return nameint
 
@@ -205,7 +205,7 @@ class System:
         for role in roles:
             for package in config.get(role, 'packages').split(' '):
                 try:
-                    run("apt-get install -y {0}".format(package))
+                    run("DEBIAN_FRONTEND=noninteractive apt-get install -y {0}".format(package))
                     self.logger.writelog("[OK] Installation package {package}".format(package=package))
                 except BaseException as e:
                     self.logger.writelog("[ERROR] Installation package {package} ({error})".format(

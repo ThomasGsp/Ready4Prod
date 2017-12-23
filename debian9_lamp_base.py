@@ -25,7 +25,7 @@ def deploy_lamp():
 
     # VM env access
     env.user = 'root'
-    env.key_filename = '~/.ssh/id_rsa'
+    env.key_filename = 'keys/changeme'
 
     # Log output
     CONFR4P["LOGFILE"] = "/tmp/logsinstallr4p"
@@ -48,7 +48,7 @@ def deploy_lamp():
         {
             'VM': {
                 "CPU": 2,
-                "RAM": 8096
+                "RAM": 4096
             }
         }
 
